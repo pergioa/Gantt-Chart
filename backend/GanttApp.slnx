@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="GanttApp.API/GanttApp.API.csproj" />
+  <Project Path="GanttApp.Core/GanttApp.Core.csproj" />
+  <Project Path="GanttApp.Infrastructure/GanttApp.Infrastructure.csproj" />
+</Solution>
