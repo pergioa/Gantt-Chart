@@ -37,6 +37,5 @@ public class ExceptionHandlingMiddleware( RequestDelegate next, ILogger<Exceptio
             
             await context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails, JsonSerializerOptions.Web));
         }
-
     }
 }
