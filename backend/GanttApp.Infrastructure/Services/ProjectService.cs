@@ -5,11 +5,11 @@ using GanttApp.Core.Interfaces;
 
 namespace GanttApp.Infrastructure.Services;
 
-public class ProjectService( IProjectRepository repository, IMapper mapper) : IProjectService
+public class ProjectService(IProjectRepository repository, IMapper mapper) : IProjectService
 {
     private readonly IProjectRepository _repository = repository;
     private readonly IMapper _mapper = mapper;
-    
+
     public async Task<ProjectDto> CreateAsync(CreateProjectDto dto)
     {
         var entity = _mapper.Map<Project>(dto);
@@ -34,16 +34,16 @@ public class ProjectService( IProjectRepository repository, IMapper mapper) : IP
 
         if (entity is null) throw new KeyNotFoundException($"Project {id} not found.");
 
-        return  _mapper.Map<ProjectDto>(entity);
+        return _mapper.Map<ProjectDto>(entity);
     }
 
     public async Task<ProjectDto> UpdateAsync(Guid id, UpdateProjectDto dto)
     {
         var existing = await _repository.GetByIdAsync(id);
-        
+
         if (existing is null) throw new KeyNotFoundException($"Project {id} not found.");
 
-        existing = _mapper.Map(dto,existing);
+        existing = _mapper.Map(dto, existing);
         var updated = await _repository.UpdateAsync(existing);
         return _mapper.Map<ProjectDto>(updated);
     }
