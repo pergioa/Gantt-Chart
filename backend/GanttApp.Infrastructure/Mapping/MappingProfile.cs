@@ -21,10 +21,16 @@ public class MappingProfile : Profile
         CreateMap<CreateTaskDto, ProjectTask>()
                                               .ForMember(dest => dest.Id, opt => opt.Ignore())
                                               .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
-                                              .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+                                              .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                                              .ForMember(dest => dest.Project, opt => opt.Ignore())
+                                              .ForMember(dest => dest.Parent, opt => opt.Ignore())
+                                              .ForMember(dest => dest.Children, opt => opt.Ignore());
         CreateMap<UpdateTaskDto, ProjectTask>()
                                               .ForMember(dest => dest.Id, opt => opt.Ignore())
                                               .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
-                                              .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
+                                              .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                                              .ForMember(dest => dest.Project, opt => opt.Ignore())
+                                              .ForMember(dest => dest.Parent, opt => opt.Ignore())
+                                              .ForMember(dest => dest.Children, opt => opt.Ignore());
     }
 }
