@@ -1,1 +1,45 @@
-<p>project-detail works!</p>
+<section class="project-detail-page">
+  <header class="page-header">
+    <div class="header-copy">
+      <a class="back-link" [routerLink]="['/dashboard']">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to Projects</span>
+      </a>
+      <h1>{{ project?.name }}</h1>
+    </div>
+
+    <button class="btn btn-primary" type="button" (click)="onAddTask()">Add Task</button>
+  </header>
+
+  <section class="task-section">
+    <div class="section-heading">
+      <h2>Tasks</h2>
+    </div>
+
+    @if (tasks$ | async; as tasks) {
+      @if (tasks.length === 0) {
+        <div class="empty-state">No tasks yet.</div>
+      }
+
+      @if (tasks.length > 0) {
+        <div class="task-list">
+          @for (t of tasks; track t.id) {
+            <div class="task-row">
+              <div class="task-main">
+                <h3>{{ t.title }}</h3>
+              </div>
+
+              <div class="task-meta">
+                <span>{{ t.startDate }}</span>
+                <span>{{ t.endDate }}</span>
+                <span class="progress-badge">{{ t.progress }}%</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    } @else {
+      <div class="status-message">Loading...</div>
+    }
+  </section>
+</section>

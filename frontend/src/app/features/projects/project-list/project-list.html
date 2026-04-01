@@ -1,1 +1,35 @@
-<p>project-list works!</p>
+<section class="project-list-page">
+  <header class="top-bar">
+    <div>
+      <h1>Projects</h1>
+    </div>
+
+    <a class="btn btn-primary" [routerLink]="['/projects/new']">New Project</a>
+  </header>
+
+  @if (projects$ | async; as projects) {
+    @if (projects.length === 0) {
+      <div class="empty-state">
+        <p>No projects yet. Create your first one.</p>
+      </div>
+    }
+
+    @if (projects.length > 0) {
+      <div class="project-grid">
+        @for (p of projects; track p.id) {
+          <article class="project-card">
+            <div class="card-content">
+              <h3>{{ p.name }}</h3>
+              <p class="description">{{ p.description }}</p>
+            </div>
+
+            <footer class="card-footer">
+              <small>{{ p.createdAt }}</small>
+              <a class="btn btn-outline" [routerLink]="['/projects', p.id]">Open</a>
+            </footer>
+          </article>
+        }
+      </div>
+    }
+  }
+</section>

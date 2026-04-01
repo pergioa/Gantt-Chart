@@ -1,1 +1,32 @@
-<p>project-form works!</p>
+<section class="project-form-page">
+  <form class="form-card" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <header class="form-header">
+      <h1>{{ isEditMode ? 'Edit Project' : 'New Project' }}</h1>
+      <p>Define the project details before planning tasks and timelines.</p>
+    </header>
+
+    <div class="field">
+      <label for="project-name">Project Name</label>
+      <input id="project-name" type="text" formControlName="name" />
+      @if (form.get('name')?.touched && form.get('name')?.invalid) {
+        <div class="error">Name is required</div>
+      }
+    </div>
+
+    <div class="field">
+      <label for="project-description">Description</label>
+      <textarea
+        id="project-description"
+        rows="4"
+        formControlName="description"
+      ></textarea>
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-ghost" [routerLink]="['/dashboard']">Cancel</a>
+      <button class="btn btn-primary" type="submit" [disabled]="form.invalid">
+        Save Project
+      </button>
+    </div>
+  </form>
+</section>
