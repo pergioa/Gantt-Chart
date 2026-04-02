@@ -1,11 +1,11 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, switchMap } from 'rxjs';
 import { ProjectService } from '../../../core/services/projectService';
+import { TaskService } from '../../../core/services/taskService';
 import { Project } from '../../../core/models/project.model';
 import { Task } from '../../../core/models/task.model';
-import { TaskService } from '../../../core/services/taskService';
 
 @Component({
   selector: 'app-project-detail',
@@ -19,16 +19,17 @@ export class ProjectDetail implements OnInit {
   private readonly taskService = inject(TaskService);
 
   project: Project | null = null;
-  tasks$!: Observable<Task[]>;
+  private projectId!: string;
+  private readonly refresh$ = new BehaviorSubject<void>(undefined);
+  tasks$ = this.refresh$.pipe(switchMap(() => this.projectService.getTasks(this.projectId)));
 
   ngOnInit(): void {
-    const projectId = this.route.snapshot.paramMap.get('id') as string;
-    this.projectService.getById(projectId).subscribe((project)=> this.project = project);
-    this.tasks$ = this.projectService.getTasks(projectId);
+    this.projectId = this.route.snapshot.paramMap.get('id') as string;
+    this.projectService.getById(this.projectId).subscribe((project) => this.project = project);
   }
 
   deleteTask(taskId: string): void {
-    this.taskService.delete(taskId).subscribe(()=> this.tasks$ = this.projectService.getTasks(this.project?.id as string))
+    this.taskService.delete(taskId).subscribe(() => this.refresh$.next());
   }
 
   onAddTask(): void {
