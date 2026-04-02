@@ -103,6 +103,10 @@ input::placeholder {
   color: var(--text-muted);
 }
 
+app-date-picker {
+  display: block;
+}
+
 input:focus {
   outline: none;
   border-color: var(--accent);

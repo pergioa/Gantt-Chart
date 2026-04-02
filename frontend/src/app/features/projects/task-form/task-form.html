@@ -17,7 +17,11 @@
     <div class="field-grid">
       <div class="field">
         <label for="task-start-date">Start Date</label>
-        <input id="task-start-date" type="date" formControlName="startDate" />
+        <app-date-picker
+          inputId="task-start-date"
+          placeholder="MM/DD/YYYY"
+          formControlName="startDate"
+        />
         @if (form.get('startDate')?.touched && form.get('startDate')?.invalid) {
           <div class="error">Start date is required</div>
         }
@@ -25,7 +29,11 @@
 
       <div class="field">
         <label for="task-end-date">End Date</label>
-        <input id="task-end-date" type="date" formControlName="endDate" />
+        <app-date-picker
+          inputId="task-end-date"
+          placeholder="MM/DD/YYYY"
+          formControlName="endDate"
+        />
         @if (form.get('endDate')?.touched && form.get('endDate')?.invalid) {
           <div class="error">End date is required</div>
         }
