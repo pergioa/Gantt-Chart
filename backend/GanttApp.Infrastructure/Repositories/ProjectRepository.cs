@@ -36,7 +36,8 @@ public class ProjectRepository(AppDbContext context) : IProjectRepository
     public async Task DeleteAsync(Guid id)
     {
         var project = await _dbSet.FindAsync(id);
-        if (project is null) return;
+        if (project is null)
+            return;
         _dbSet.Remove(project);
         await context.SaveChangesAsync();
     }

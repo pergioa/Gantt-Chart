@@ -1,6 +1,3 @@
 namespace GanttApp.Core.DTOs;
 
-public record UpdateProjectDto(
-    string Name,
-    string Description
-    );
+public record UpdateProjectDto(string Name, string Description);

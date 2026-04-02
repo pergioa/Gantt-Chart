@@ -19,7 +19,8 @@ namespace GanttApp.Infrastructure.Migrations
                 defaultValueSql: "now()",
                 oldClrType: typeof(DateTime),
                 oldType: "timestamp with time zone",
-                oldDefaultValueSql: "now()");
+                oldDefaultValueSql: "now()"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "StartDate",
@@ -27,7 +28,8 @@ namespace GanttApp.Infrastructure.Migrations
                 type: "timestamp without time zone",
                 nullable: false,
                 oldClrType: typeof(DateTime),
-                oldType: "timestamp with time zone");
+                oldType: "timestamp with time zone"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "EndDate",
@@ -35,7 +37,8 @@ namespace GanttApp.Infrastructure.Migrations
                 type: "timestamp without time zone",
                 nullable: false,
                 oldClrType: typeof(DateTime),
-                oldType: "timestamp with time zone");
+                oldType: "timestamp with time zone"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CreatedAt",
@@ -45,7 +48,8 @@ namespace GanttApp.Infrastructure.Migrations
                 defaultValueSql: "now()",
                 oldClrType: typeof(DateTime),
                 oldType: "timestamp with time zone",
-                oldDefaultValueSql: "now()");
+                oldDefaultValueSql: "now()"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CreatedAt",
@@ -55,7 +59,8 @@ namespace GanttApp.Infrastructure.Migrations
                 defaultValueSql: "now()",
                 oldClrType: typeof(DateTime),
                 oldType: "timestamp with time zone",
-                oldDefaultValueSql: "now()");
+                oldDefaultValueSql: "now()"
+            );
         }
 
         /// <inheritdoc />
@@ -69,7 +74,8 @@ namespace GanttApp.Infrastructure.Migrations
                 defaultValueSql: "now()",
                 oldClrType: typeof(DateTime),
                 oldType: "timestamp without time zone",
-                oldDefaultValueSql: "now()");
+                oldDefaultValueSql: "now()"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "StartDate",
@@ -77,7 +83,8 @@ namespace GanttApp.Infrastructure.Migrations
                 type: "timestamp with time zone",
                 nullable: false,
                 oldClrType: typeof(DateTime),
-                oldType: "timestamp without time zone");
+                oldType: "timestamp without time zone"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "EndDate",
@@ -85,7 +92,8 @@ namespace GanttApp.Infrastructure.Migrations
                 type: "timestamp with time zone",
                 nullable: false,
                 oldClrType: typeof(DateTime),
-                oldType: "timestamp without time zone");
+                oldType: "timestamp without time zone"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CreatedAt",
@@ -95,7 +103,8 @@ namespace GanttApp.Infrastructure.Migrations
                 defaultValueSql: "now()",
                 oldClrType: typeof(DateTime),
                 oldType: "timestamp without time zone",
-                oldDefaultValueSql: "now()");
+                oldDefaultValueSql: "now()"
+            );
 
             migrationBuilder.AlterColumn<DateTime>(
                 name: "CreatedAt",
@@ -105,7 +114,8 @@ namespace GanttApp.Infrastructure.Migrations
                 defaultValueSql: "now()",
                 oldClrType: typeof(DateTime),
                 oldType: "timestamp without time zone",
-                oldDefaultValueSql: "now()");
+                oldDefaultValueSql: "now()"
+            );
         }
     }
 }

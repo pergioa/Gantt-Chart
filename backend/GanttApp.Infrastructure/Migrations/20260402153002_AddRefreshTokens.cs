@@ -15,11 +15,18 @@ namespace GanttApp.Infrastructure.Migrations
                 name: "RefreshTokens",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    Id = table.Column<Guid>(
+                        type: "uuid",
+                        nullable: false,
+                        defaultValueSql: "gen_random_uuid()"
+                    ),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     TokenHash = table.Column<string>(type: "text", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false)
+                    ExpiresAt = table.Column<DateTime>(
+                        type: "timestamp without time zone",
+                        nullable: false
+                    ),
+                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false),
                 },
                 constraints: table =>
                 {
@@ -29,20 +36,22 @@ namespace GanttApp.Infrastructure.Migrations
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+                        onDelete: ReferentialAction.Cascade
+                    );
+                }
+            );
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId_IsRevoked",
                 table: "RefreshTokens",
-                columns: new[] { "UserId", "IsRevoked" });
+                columns: new[] { "UserId", "IsRevoked" }
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "RefreshTokens");
+            migrationBuilder.DropTable(name: "RefreshTokens");
         }
     }
 }

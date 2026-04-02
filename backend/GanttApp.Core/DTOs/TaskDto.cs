@@ -10,5 +10,4 @@ public record TaskDto(
     Guid? ParentId,
     int Order,
     DateTime CreatedAt
-    );
-
+);

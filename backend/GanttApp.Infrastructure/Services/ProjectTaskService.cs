@@ -5,7 +5,11 @@ using GanttApp.Core.Interfaces;
 
 namespace GanttApp.Infrastructure.Services;
 
-public class ProjectTaskService(IProjectTaskRepository projectTaskRepository, IProjectRepository projectRepository, IMapper mapper) : IProjectTaskService
+public class ProjectTaskService(
+    IProjectTaskRepository projectTaskRepository,
+    IProjectRepository projectRepository,
+    IMapper mapper
+) : IProjectTaskService
 {
     private readonly IProjectTaskRepository _projectTaskRepository = projectTaskRepository;
     private readonly IProjectRepository _projectRepository = projectRepository;
@@ -14,13 +18,14 @@ public class ProjectTaskService(IProjectTaskRepository projectTaskRepository, IP
     public async Task<TaskDto> CreateAsync(Guid projectId, CreateTaskDto dto)
     {
         var project = await _projectRepository.GetByIdAsync(projectId);
-        if (project is null) throw new KeyNotFoundException($"Project {projectId} not found.");
+        if (project is null)
+            throw new KeyNotFoundException($"Project {projectId} not found.");
 
         var entity = _mapper.Map<ProjectTask>(dto);
         entity.ProjectId = projectId;
-        
+
         var created = await _projectTaskRepository.CreateAsync(entity);
-        
+
         return _mapper.Map<TaskDto>(created);
     }
 
@@ -32,17 +37,19 @@ public class ProjectTaskService(IProjectTaskRepository projectTaskRepository, IP
     public async Task<IEnumerable<TaskDto>> GetByProjectIdAsync(Guid projectId)
     {
         var project = await _projectRepository.GetByIdAsync(projectId);
-        if (project is null) throw new KeyNotFoundException($"Project {projectId} not found.");
+        if (project is null)
+            throw new KeyNotFoundException($"Project {projectId} not found.");
 
         var tasks = await _projectTaskRepository.GetByProjectIdAsync(projectId);
-        
+
         return _mapper.Map<IEnumerable<TaskDto>>(tasks);
     }
 
     public async Task<TaskDto> UpdateAsync(Guid id, UpdateTaskDto dto)
     {
         var existing = await _projectTaskRepository.GetByIdAsync(id);
-        if (existing is null) throw new KeyNotFoundException($"Task {id} not found.");
+        if (existing is null)
+            throw new KeyNotFoundException($"Task {id} not found.");
 
         existing = _mapper.Map(dto, existing);
         var updated = await _projectTaskRepository.UpdateAsync(existing);

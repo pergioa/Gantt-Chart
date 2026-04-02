@@ -6,7 +6,6 @@ namespace GanttApp.Infrastructure.Repositories;
 
 public class ProjectTaskRepository(AppDbContext context) : IProjectTaskRepository
 {
-
     private readonly DbSet<ProjectTask> _dbSet = context.Set<ProjectTask>();
 
     public async Task<ProjectTask> CreateAsync(ProjectTask task)
@@ -19,7 +18,8 @@ public class ProjectTaskRepository(AppDbContext context) : IProjectTaskRepositor
     public async Task DeleteAsync(Guid id)
     {
         var task = await _dbSet.FindAsync(id);
-        if (task is null) return;
+        if (task is null)
+            return;
         _dbSet.Remove(task);
         await context.SaveChangesAsync();
     }
@@ -31,10 +31,11 @@ public class ProjectTaskRepository(AppDbContext context) : IProjectTaskRepositor
 
     public async Task<IEnumerable<ProjectTask>> GetByProjectIdAsync(Guid projectId)
     {
-        return await _dbSet.AsNoTracking()
-                    .Where(t => t.ProjectId == projectId)
-                    .OrderBy(t => t.Order)
-                    .ToListAsync();
+        return await _dbSet
+            .AsNoTracking()
+            .Where(t => t.ProjectId == projectId)
+            .OrderBy(t => t.Order)
+            .ToListAsync();
     }
 
     public async Task<ProjectTask> UpdateAsync(ProjectTask task)

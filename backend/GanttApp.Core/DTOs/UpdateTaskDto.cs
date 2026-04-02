@@ -7,4 +7,4 @@ public record UpdateTaskDto(
     DateTime EndDate,
     int Order,
     int Progress
-    );
+);

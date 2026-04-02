@@ -33,7 +33,8 @@ public class ProjectService(IProjectRepository repository, IMapper mapper) : IPr
     {
         var entity = await _repository.GetByIdAsync(id);
 
-        if (entity is null) throw new KeyNotFoundException($"Project {id} not found.");
+        if (entity is null)
+            throw new KeyNotFoundException($"Project {id} not found.");
 
         return _mapper.Map<ProjectDto>(entity);
     }
@@ -42,7 +43,8 @@ public class ProjectService(IProjectRepository repository, IMapper mapper) : IPr
     {
         var existing = await _repository.GetByIdAsync(id);
 
-        if (existing is null) throw new KeyNotFoundException($"Project {id} not found.");
+        if (existing is null)
+            throw new KeyNotFoundException($"Project {id} not found.");
 
         existing = _mapper.Map(dto, existing);
         var updated = await _repository.UpdateAsync(existing);

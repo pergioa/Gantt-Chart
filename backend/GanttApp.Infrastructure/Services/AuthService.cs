@@ -26,7 +26,7 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
         {
             Name = dto.Name,
             Email = dto.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password, workFactor: 12)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password, workFactor: 12),
         };
 
         _context.Users.Add(user);
@@ -39,9 +39,11 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
         var exists = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-        if (exists is null) throw new UnauthorizedAccessException("Invalid Credentials");
+        if (exists is null)
+            throw new UnauthorizedAccessException("Invalid Credentials");
 
-        if (!BCrypt.Net.BCrypt.Verify(dto.Password, exists.PasswordHash)) throw new UnauthorizedAccessException("Invalid Credentials");
+        if (!BCrypt.Net.BCrypt.Verify(dto.Password, exists.PasswordHash))
+            throw new UnauthorizedAccessException("Invalid Credentials");
 
         var accessToken = GenerateJwtToken(exists);
         var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(64));
@@ -52,7 +54,7 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             UserId = exists.Id,
             TokenHash = tokenHash,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false
+            IsRevoked = false,
         };
 
         _context.RefreshTokens.Add(refreshToken);
@@ -68,8 +70,10 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
     /// <inheritdoc/>
     public async Task<AuthResponseDto> RefreshTokenAsync(string rawToken, Guid userId)
     {
-        var tokens = await _context.RefreshTokens
-            .Where(t => t.UserId == userId && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
+        var tokens = await _context
+            .RefreshTokens.Where(t =>
+                t.UserId == userId && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow
+            )
             .ToListAsync();
 
         var match = tokens.FirstOrDefault(t => BCrypt.Net.BCrypt.Verify(rawToken, t.TokenHash));
@@ -78,16 +82,19 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
 
         match.IsRevoked = true;
 
-        var user = await _context.Users.FindAsync(userId)
+        var user =
+            await _context.Users.FindAsync(userId)
             ?? throw new UnauthorizedAccessException("User not found.");
 
         var newRawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(64));
-        _context.RefreshTokens.Add(new RefreshToken
-        {
-            UserId = userId,
-            TokenHash = BCrypt.Net.BCrypt.HashPassword(newRawToken, workFactor: 12),
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
-        });
+        _context.RefreshTokens.Add(
+            new RefreshToken
+            {
+                UserId = userId,
+                TokenHash = BCrypt.Net.BCrypt.HashPassword(newRawToken, workFactor: 12),
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+            }
+        );
 
         await _context.SaveChangesAsync();
 
@@ -101,8 +108,8 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
     /// <inheritdoc/>
     public async Task LogoutAsync(string rawToken, Guid userId)
     {
-        var tokens = await _context.RefreshTokens
-            .Where(t => t.UserId == userId && !t.IsRevoked)
+        var tokens = await _context
+            .RefreshTokens.Where(t => t.UserId == userId && !t.IsRevoked)
             .ToListAsync();
 
         var match = tokens.FirstOrDefault(t => BCrypt.Net.BCrypt.Verify(rawToken, t.TokenHash));
@@ -123,9 +130,11 @@ public class AuthService(AppDbContext context, IConfiguration configuration) : I
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim("name", user.Name),
-            new Claim(JwtRegisteredClaimNames.Iat,
+            new Claim(
+                JwtRegisteredClaimNames.Iat,
                 DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                ClaimValueTypes.Integer64)
+                ClaimValueTypes.Integer64
+            ),
         };
 
         var token = new JwtSecurityToken(

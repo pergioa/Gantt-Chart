@@ -1,4 +1,3 @@
-
 namespace GanttApp.Core.DTOs;
 
 public record ProjectDto(
@@ -7,4 +6,4 @@ public record ProjectDto(
     string Description,
     Guid OwnerId,
     DateTime CreatedAt
-    );
+);

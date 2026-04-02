@@ -22,7 +22,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(u => u.Email).IsUnique();
             e.Property(u => u.Name).IsRequired().HasMaxLength(256);
             e.Property(u => u.PasswordHash).IsRequired();
-            e.Property(u => u.CreatedAt).IsRequired().HasDefaultValueSql("now()").ValueGeneratedOnAdd();
+            e.Property(u => u.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("now()")
+                .ValueGeneratedOnAdd();
         });
 
         modelBuilder.Entity<Project>(e =>
@@ -30,12 +33,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(p => p.Id);
             e.Property(p => p.Id).HasDefaultValueSql("gen_random_uuid()");
             e.Property(p => p.Name).IsRequired().HasMaxLength(512);
-            e.Property(p => p.CreatedAt).IsRequired().HasDefaultValueSql("now()").ValueGeneratedOnAdd();
+            e.Property(p => p.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("now()")
+                .ValueGeneratedOnAdd();
 
             e.HasOne(p => p.Owner)
-             .WithMany(u => u.Projects)
-             .HasForeignKey(p => p.OwnerId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(u => u.Projects)
+                .HasForeignKey(p => p.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ProjectTask>(e =>
@@ -43,18 +49,21 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasKey(t => t.Id);
             e.Property(t => t.Id).HasDefaultValueSql("gen_random_uuid()");
             e.Property(t => t.Title).IsRequired().HasMaxLength(512);
-            e.Property(t => t.CreatedAt).IsRequired().HasDefaultValueSql("now()").ValueGeneratedOnAdd();
+            e.Property(t => t.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("now()")
+                .ValueGeneratedOnAdd();
 
             e.HasOne(t => t.Project)
-             .WithMany(p => p.Tasks)
-             .HasForeignKey(t => t.ProjectId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(p => p.Tasks)
+                .HasForeignKey(t => t.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             e.HasOne(t => t.Parent)
-             .WithMany(t => t.Children)
-             .HasForeignKey(t => t.ParentId)
-             .IsRequired(false)
-             .OnDelete(DeleteBehavior.Restrict);
+                .WithMany(t => t.Children)
+                .HasForeignKey(t => t.ParentId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<RefreshToken>(e =>
@@ -64,9 +73,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(t => t.TokenHash).IsRequired();
 
             e.HasOne<User>()
-             .WithMany()
-             .HasForeignKey(t => t.UserId)
-             .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             e.HasIndex(t => new { t.UserId, t.IsRevoked });
         });

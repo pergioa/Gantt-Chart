@@ -7,4 +7,4 @@ public record CreateTaskDto(
     int Progress,
     Guid? ParentId,
     int Order
-    );
+);
