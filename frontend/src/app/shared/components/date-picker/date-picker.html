@@ -1,0 +1,112 @@
+<div class="date-picker" [class.is-open]="isOpen">
+  <div class="field-shell">
+    <input
+      [id]="inputId"
+      class="date-input"
+      type="text"
+      [value]="displayValue"
+      [placeholder]="placeholder"
+      [disabled]="isDisabled"
+      readonly
+      (click)="toggleCalendar()"
+    />
+
+    <button
+      class="date-trigger"
+      type="button"
+      [disabled]="isDisabled"
+      aria-label="Open calendar"
+      (click)="toggleCalendar()"
+    >
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    </button>
+  </div>
+
+  @if (isOpen) {
+    <div class="calendar-popover" role="dialog" aria-label="Calendar">
+      <div class="calendar-header">
+        <button class="nav-button" type="button" aria-label="Previous month" (click)="previousMonth()">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path>
+          </svg>
+        </button>
+        <div class="header-labels">
+          @if (currentView === 'year') {
+            <button class="header-button" type="button" (click)="showYearView()">{{ yearRangeLabel }}</button>
+          } @else {
+            <button class="header-button" type="button" (click)="showMonthView()">{{ monthLabel }}</button>
+            <button class="header-button" type="button" (click)="showYearView()">{{ yearLabel }}</button>
+          }
+        </div>
+        <button class="nav-button" type="button" aria-label="Next month" (click)="nextMonth()">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path>
+          </svg>
+        </button>
+      </div>
+
+      @if (currentView === 'day') {
+        <div class="weekday-row">
+          @for (label of weekdayLabels; track label + $index) {
+            <span>{{ label }}</span>
+          }
+        </div>
+
+        <div class="day-grid">
+          @for (cell of calendarCells; track cell.key) {
+            <button
+              class="day-cell"
+              type="button"
+              [class.is-outside-month]="!cell.inCurrentMonth"
+              [class.is-selected]="isSelected(cell.date)"
+              [class.is-today]="cell.isToday"
+              (click)="selectDate(cell.date)"
+            >
+              {{ cell.dayNumber }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (currentView === 'month') {
+        <div class="selection-grid">
+          @for (month of monthLabels; track month; let index = $index) {
+            <button
+              class="selection-cell"
+              type="button"
+              [class.is-active]="isActiveMonth(index)"
+              (click)="selectMonth(index)"
+            >
+              {{ month }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (currentView === 'year') {
+        <div class="selection-grid">
+          @for (year of yearCells; track year) {
+            <button
+              class="selection-cell"
+              type="button"
+              [class.is-active]="isActiveYear(year)"
+              (click)="selectYear(year)"
+            >
+              {{ year }}
+            </button>
+          }
+        </div>
+      }
+
+      <div class="calendar-footer">
+        <button class="footer-button" type="button" (click)="clearDate()">Clear</button>
+        <button class="footer-button" type="button" (click)="closeCalendar()">Done</button>
+      </div>
+    </div>
+  }
+</div>
