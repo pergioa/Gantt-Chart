@@ -42,8 +42,8 @@
               </div>
 
               <div class="task-meta">
-                <span>{{ t.startDate }}</span>
-                <span>{{ t.endDate }}</span>
+                <span>{{ t.startDate | date:'MMM d, y' }}</span>
+                <span>{{ t.endDate | date:'MMM d, y' }}</span>
                 <span class="progress-badge">{{ t.progress }}%</span>
               </div>
 

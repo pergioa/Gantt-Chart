@@ -30,7 +30,7 @@
             <footer class="card-footer">
               <div class="meta">
                 <span class="meta-label">Created</span>
-                <small>{{ p.createdAt }}</small>
+                <small>{{ p.createdAt | date:'MMM d, y' }}</small>
               </div>
               <div class="card-actions">
                 <a class="btn btn-outline" [routerLink]="['/projects', p.id]">Open</a>

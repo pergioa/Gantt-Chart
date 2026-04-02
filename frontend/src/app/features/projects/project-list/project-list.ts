@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { AsyncPipe } from '@angular/common';
+import { AsyncPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BehaviorSubject, switchMap } from 'rxjs';
 import { ProjectService } from '../../../core/services/projectService';
 
 @Component({
   selector: 'app-project-list',
-  imports: [AsyncPipe, RouterLink],
+  imports: [AsyncPipe, DatePipe, RouterLink],
   templateUrl: './project-list.html',
   styleUrl: './project-list.scss',
 })

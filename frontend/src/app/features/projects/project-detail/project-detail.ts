@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { AsyncPipe } from '@angular/common';
+import { AsyncPipe, DatePipe } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { BehaviorSubject, switchMap } from 'rxjs';
 import { ProjectService } from '../../../core/services/projectService';
@@ -9,7 +9,7 @@ import { Task } from '../../../core/models/task.model';
 
 @Component({
   selector: 'app-project-detail',
-  imports: [AsyncPipe, RouterLink],
+  imports: [AsyncPipe, DatePipe, RouterLink],
   templateUrl: './project-detail.html',
   styleUrl: './project-detail.scss',
 })
