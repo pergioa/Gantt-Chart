@@ -10,9 +10,10 @@ public class ProjectService(IProjectRepository repository, IMapper mapper) : IPr
     private readonly IProjectRepository _repository = repository;
     private readonly IMapper _mapper = mapper;
 
-    public async Task<ProjectDto> CreateAsync(CreateProjectDto dto)
+    public async Task<ProjectDto> CreateAsync(CreateProjectDto dto, Guid userId)
     {
         var entity = _mapper.Map<Project>(dto);
+        entity.OwnerId = userId;
         var created = await _repository.CreateAsync(entity);
         return _mapper.Map<ProjectDto>(created);
     }
@@ -22,10 +23,10 @@ public class ProjectService(IProjectRepository repository, IMapper mapper) : IPr
         await _repository.DeleteAsync(id);
     }
 
-    public async Task<IEnumerable<ProjectDto>> GetAllAsync()
+    public async Task<IEnumerable<ProjectDto>> GetAllAsync(Guid userId)
     {
         var projects = await _repository.GetAllAsync();
-        return _mapper.Map<IEnumerable<ProjectDto>>(projects);
+        return _mapper.Map<IEnumerable<ProjectDto>>(projects.Where(p => p.OwnerId == userId));
     }
 
     public async Task<ProjectDto> GetByIdAsync(Guid id)

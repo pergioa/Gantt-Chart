@@ -2,8 +2,4 @@
 
 namespace GanttApp.Core.DTOs;
 
-public record CreateProjectDto(
-string Name,
-string Description,
-Guid OwnerId
-);
+public record CreateProjectDto(string Name, string Description);

@@ -1,10 +1,12 @@
 using GanttApp.Core.DTOs;
 using GanttApp.Core.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GanttApp.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("tasks")]
 public class TasksController(IProjectTaskService projectTaskService) : ControllerBase
 {
