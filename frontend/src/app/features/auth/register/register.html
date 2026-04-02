@@ -1,0 +1,55 @@
+<section class="auth-page">
+  <form class="auth-card" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <header class="auth-header">
+      <span class="eyebrow">New Workspace</span>
+      <h1>Register</h1>
+      <p>Create your account to start organizing projects, milestones, and delivery timelines.</p>
+    </header>
+
+    @if (errorMessage) {
+      <p class="error-banner">{{ errorMessage }}</p>
+    }
+
+    <div class="field">
+      <label for="register-name">Name</label>
+      <input id="register-name" type="text" formControlName="name" placeholder="Your name" />
+    </div>
+
+    <div class="field">
+      <label for="register-email">Email</label>
+      <input id="register-email" type="email" formControlName="email" placeholder="you@example.com" />
+    </div>
+
+    <div class="field">
+      <label for="register-password">Password</label>
+      <input
+        id="register-password"
+        type="password"
+        formControlName="password"
+        placeholder="Minimum 8 characters"
+      />
+    </div>
+
+    <div class="field">
+      <label for="register-confirm-password">Confirm Password</label>
+      <input
+        id="register-confirm-password"
+        type="password"
+        formControlName="confirmPassword"
+        placeholder="Re-enter your password"
+      />
+      @if (form.hasError('passwordMismatch') && form.get('confirmPassword')?.touched) {
+        <p class="error-text">Passwords do not match.</p>
+      }
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" [disabled]="form.invalid">Register</button>
+    </div>
+
+    <p class="auth-switch">
+      Already have an account?
+      <a routerLink="/login">Login</a>
+    </p>
+  </form>
+</section>

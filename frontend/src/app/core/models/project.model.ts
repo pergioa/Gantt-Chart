@@ -8,8 +8,7 @@ export interface Project{
 
 export interface CreateProject{
     name:string,
-    description:string,
-    ownerId:string
+    description:string
 }
 
 export interface UpdateProject{

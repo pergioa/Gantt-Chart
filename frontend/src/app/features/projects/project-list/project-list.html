@@ -6,7 +6,10 @@
       <p>Track timelines, monitor delivery, and jump back into active workstreams.</p>
     </div>
 
-    <a class="btn btn-primary" [routerLink]="['/projects/new']">New Project</a>
+    <div class="top-bar-actions">
+      <button class="btn btn-ghost" type="button" (click)="logout()">Logout</button>
+      <a class="btn btn-primary" [routerLink]="['/projects/new']">New Project</a>
+    </div>
   </header>
 
   @if (projects$ | async; as projects) {

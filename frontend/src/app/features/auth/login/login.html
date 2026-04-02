@@ -1,0 +1,32 @@
+<section class="auth-page">
+  <form class="auth-card" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <header class="auth-header">
+      <span class="eyebrow">Account Access</span>
+      <h1>Login</h1>
+      <p>Sign in to manage projects, timelines, and task progress from one place.</p>
+    </header>
+
+    @if (errorMessage) {
+      <p class="error-banner">{{ errorMessage }}</p>
+    }
+
+    <div class="field">
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" formControlName="email" placeholder="you@example.com" />
+    </div>
+
+    <div class="field">
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" formControlName="password" placeholder="Enter your password" />
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" [disabled]="form.invalid">Login</button>
+    </div>
+
+    <p class="auth-switch">
+      Don't have an account?
+      <a routerLink="/register">Register</a>
+    </p>
+  </form>
+</section>

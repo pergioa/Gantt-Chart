@@ -47,7 +47,6 @@ export class ProjectForm implements OnInit {
       const createDto: CreateProject = {
         name: name!,
         description: description ?? '',
-        ownerId: '00000000-0000-0000-0000-000000000001',
       };
       this.projectService.create(createDto).subscribe(() => this.router.navigate(['/dashboard']));
     }
