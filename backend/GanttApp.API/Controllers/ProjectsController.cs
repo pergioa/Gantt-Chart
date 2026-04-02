@@ -6,7 +6,10 @@ namespace GanttApp.API.Controllers;
 
 [ApiController]
 [Route("projects")]
-public class ProjectsController(IProjectService projectService, IProjectTaskService projectTaskService) : ControllerBase
+public class ProjectsController(
+    IProjectService projectService,
+    IProjectTaskService projectTaskService
+) : ControllerBase
 {
     private readonly IProjectService _projectService = projectService;
     private readonly IProjectTaskService _projectTaskService = projectTaskService;
@@ -44,7 +47,10 @@ public class ProjectsController(IProjectService projectService, IProjectTaskServ
     }
 
     [HttpPost("{projectId:guid}/tasks")]
-    public async Task<IActionResult> CreateTask(Guid projectId, [FromBody] CreateTaskDto createTaskDto)
+    public async Task<IActionResult> CreateTask(
+        Guid projectId,
+        [FromBody] CreateTaskDto createTaskDto
+    )
     {
         var result = await _projectTaskService.CreateAsync(projectId, createTaskDto);
         return CreatedAtAction(nameof(GetTasks), new { projectId }, result);
