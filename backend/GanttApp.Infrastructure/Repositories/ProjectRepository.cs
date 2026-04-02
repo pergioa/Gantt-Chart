@@ -32,11 +32,11 @@ public class ProjectRepository(AppDbContext context) : IProjectRepository
         return project;
     }
 
-    /// <summary>Deletes a project by id. Throws KeyNotFoundException if not found.</summary>
+    /// <summary>Deletes a project by id. No-ops if already deleted.</summary>
     public async Task DeleteAsync(Guid id)
     {
-        var project = await _dbSet.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Project {id} not found.");
+        var project = await _dbSet.FindAsync(id);
+        if (project is null) return;
         _dbSet.Remove(project);
         await context.SaveChangesAsync();
     }

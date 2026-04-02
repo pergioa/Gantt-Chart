@@ -18,9 +18,9 @@ public class ProjectTaskRepository(AppDbContext context) : IProjectTaskRepositor
 
     public async Task DeleteAsync(Guid id)
     {
-        var project = await _dbSet.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Task {id} not found.");
-        _dbSet.Remove(project);
+        var task = await _dbSet.FindAsync(id);
+        if (task is null) return;
+        _dbSet.Remove(task);
         await context.SaveChangesAsync();
     }
 
