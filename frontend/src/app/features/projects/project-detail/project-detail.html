@@ -5,7 +5,9 @@
         <span aria-hidden="true">&larr;</span>
         <span>Back to Projects</span>
       </a>
+      <span class="eyebrow">Project workspace</span>
       <h1>{{ project?.name }}</h1>
+      <p>Manage the execution window, task progress, and delivery momentum in one place.</p>
     </div>
 
     <button class="btn btn-primary" type="button" (click)="onAddTask()">Add Task</button>
@@ -14,15 +16,25 @@
   <section class="task-section">
     <div class="section-heading">
       <h2>Tasks</h2>
+      <span class="section-caption">Timeline overview</span>
     </div>
 
     @if (tasks$ | async; as tasks) {
       @if (tasks.length === 0) {
-        <div class="empty-state">No tasks yet.</div>
+        <div class="empty-state">
+          <p>No tasks yet.</p>
+        </div>
       }
 
       @if (tasks.length > 0) {
         <div class="task-list">
+          <div class="task-list-head">
+            <span>Task</span>
+            <span>Start</span>
+            <span>End</span>
+            <span>Progress</span>
+            <span>Actions</span>
+          </div>
           @for (t of tasks; track t.id) {
             <div class="task-row">
               <div class="task-main">
@@ -33,6 +45,10 @@
                 <span>{{ t.startDate }}</span>
                 <span>{{ t.endDate }}</span>
                 <span class="progress-badge">{{ t.progress }}%</span>
+              </div>
+
+              <div class="task-actions">
+                <button class="btn btn-danger" type="button" (click)="deleteTask(t.id)">Delete</button>
               </div>
             </div>
           }

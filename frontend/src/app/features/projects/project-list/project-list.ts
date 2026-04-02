@@ -14,4 +14,8 @@ import { Project } from '../../../core/models/project.model';
 export class ProjectList {
   private readonly projectService = inject(ProjectService);
   projects$: Observable<Project[]> = this.projectService.getAll();
+
+  deleteProject(id: string): void {
+    this.projectService.delete(id).subscribe(()=>this.projects$ =  this.projectService.getAll());
+  }
 }

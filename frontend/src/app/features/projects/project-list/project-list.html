@@ -1,7 +1,9 @@
 <section class="project-list-page">
   <header class="top-bar">
-    <div>
+    <div class="hero-copy">
+      <span class="eyebrow">Portfolio</span>
       <h1>Projects</h1>
+      <p>Track timelines, monitor delivery, and jump back into active workstreams.</p>
     </div>
 
     <a class="btn btn-primary" [routerLink]="['/projects/new']">New Project</a>
@@ -10,6 +12,7 @@
   @if (projects$ | async; as projects) {
     @if (projects.length === 0) {
       <div class="empty-state">
+        <h2>No projects yet.</h2>
         <p>No projects yet. Create your first one.</p>
       </div>
     }
@@ -19,13 +22,20 @@
         @for (p of projects; track p.id) {
           <article class="project-card">
             <div class="card-content">
+              <span class="card-label">Project</span>
               <h3>{{ p.name }}</h3>
               <p class="description">{{ p.description }}</p>
             </div>
 
             <footer class="card-footer">
-              <small>{{ p.createdAt }}</small>
-              <a class="btn btn-outline" [routerLink]="['/projects', p.id]">Open</a>
+              <div class="meta">
+                <span class="meta-label">Created</span>
+                <small>{{ p.createdAt }}</small>
+              </div>
+              <div class="card-actions">
+                <a class="btn btn-outline" [routerLink]="['/projects', p.id]">Open</a>
+                <button class="btn btn-danger" type="button" (click)="deleteProject(p.id)">Delete</button>
+              </div>
             </footer>
           </article>
         }

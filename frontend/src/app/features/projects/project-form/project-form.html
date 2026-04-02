@@ -1,6 +1,7 @@
 <section class="project-form-page">
   <form class="form-card" [formGroup]="form" (ngSubmit)="onSubmit()">
     <header class="form-header">
+      <span class="eyebrow">{{ isEditMode ? 'Update project' : 'Create project' }}</span>
       <h1>{{ isEditMode ? 'Edit Project' : 'New Project' }}</h1>
       <p>Define the project details before planning tasks and timelines.</p>
     </header>

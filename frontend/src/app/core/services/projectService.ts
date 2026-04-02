@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { Observable, catchError } from 'rxjs';
 import { CreateProject, Project, UpdateProject } from '../models/project.model';
+import { CreateTask, Task } from '../models/task.model';
 import { handleError } from './handle-error';
 
 @Injectable({
@@ -30,5 +31,13 @@ export class ProjectService {
 
   public delete(id:string):Observable<void>{
     return this.httpClient.delete<void>(this.apiUrl + `/projects/${id}`).pipe(catchError(handleError('delete')));
+  }
+
+  public getTasks(projectId: string): Observable<Task[]> {
+    return this.httpClient.get<Task[]>(this.apiUrl + `/projects/${projectId}/tasks`).pipe(catchError(handleError('getTasks')));
+  }
+
+  public createTask(projectId: string, dto: CreateTask): Observable<Task> {
+    return this.httpClient.post<Task>(this.apiUrl + `/projects/${projectId}/tasks`, dto).pipe(catchError(handleError('createTask')));
   }
 }

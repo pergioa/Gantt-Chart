@@ -1,1 +1,29 @@
-/* You can add global styles to this file, and also import other style files */
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0f1117;
+  color: #e8eaf0;
+  font-family: system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(108, 99, 255, 0.3);
+  color: #ffffff;
+}
