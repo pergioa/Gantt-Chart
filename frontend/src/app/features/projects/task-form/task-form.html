@@ -1,0 +1,51 @@
+<section class="task-form-page">
+  <form class="form-card" [formGroup]="form" (ngSubmit)="onSubmit()">
+    <header class="form-header">
+      <span class="eyebrow">Create task</span>
+      <h1>New Task</h1>
+      <p>Define the task schedule and current progress before adding it to the project plan.</p>
+    </header>
+
+    <div class="field">
+      <label for="task-title">Task Title</label>
+      <input id="task-title" type="text" formControlName="title" />
+      @if (form.get('title')?.touched && form.get('title')?.invalid) {
+        <div class="error">Title is required</div>
+      }
+    </div>
+
+    <div class="field-grid">
+      <div class="field">
+        <label for="task-start-date">Start Date</label>
+        <input id="task-start-date" type="date" formControlName="startDate" />
+        @if (form.get('startDate')?.touched && form.get('startDate')?.invalid) {
+          <div class="error">Start date is required</div>
+        }
+      </div>
+
+      <div class="field">
+        <label for="task-end-date">End Date</label>
+        <input id="task-end-date" type="date" formControlName="endDate" />
+        @if (form.get('endDate')?.touched && form.get('endDate')?.invalid) {
+          <div class="error">End date is required</div>
+        }
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="task-progress">Progress</label>
+      <input id="task-progress" type="number" min="0" max="100" formControlName="progress" />
+      <p class="field-hint">Enter a value from 0 to 100.</p>
+      @if (form.get('progress')?.touched && form.get('progress')?.invalid) {
+        <div class="error">Progress must be between 0 and 100</div>
+      }
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-ghost" [routerLink]="['/projects', projectId]">Cancel</a>
+      <button class="btn btn-primary" type="submit" [disabled]="form.invalid">
+        Save Task
+      </button>
+    </div>
+  </form>
+</section>

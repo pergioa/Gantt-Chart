@@ -3,6 +3,7 @@ import { Placeholder } from './shared/components/placeholder/placeholder';
 import { ProjectList } from './features/projects/project-list/project-list';
 import { ProjectForm } from './features/projects/project-form/project-form';
 import { ProjectDetail } from './features/projects/project-detail/project-detail';
+import { TaskForm } from './features/projects/task-form/task-form';
 
 export const routes: Routes = [
     { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -12,4 +13,5 @@ export const routes: Routes = [
     { path: 'projects/new', component: ProjectForm },
     { path: 'projects/:id/edit', component: ProjectForm },
     { path: 'projects/:id', component: ProjectDetail },
+    { path: 'projects/:id/tasks/new', component:TaskForm}
 ];

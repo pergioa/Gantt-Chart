@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { AsyncPipe, DatePipe } from '@angular/common';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { BehaviorSubject, switchMap } from 'rxjs';
 import { ProjectService } from '../../../core/services/projectService';
 import { TaskService } from '../../../core/services/taskService';
@@ -15,6 +15,7 @@ import { Task } from '../../../core/models/task.model';
 })
 export class ProjectDetail implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly projectService = inject(ProjectService);
   private readonly taskService = inject(TaskService);
 
@@ -33,6 +34,6 @@ export class ProjectDetail implements OnInit {
   }
 
   onAddTask(): void {
-    // wired in Phase 3
+    this.router.navigate(['/projects',this.projectId,'tasks','new']);
   }
 }
