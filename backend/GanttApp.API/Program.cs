@@ -67,6 +67,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProjectTaskRepository, ProjectTaskRepository>();
+builder.Services.AddScoped<ITaskDependencyRepository, TaskDependencyRepository>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IProjectTaskService, ProjectTaskService>();
 builder.Services.AddScoped<IAuthService, AuthService>();

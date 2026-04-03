@@ -8,11 +8,13 @@ namespace GanttApp.Infrastructure.Services;
 public class ProjectTaskService(
     IProjectTaskRepository projectTaskRepository,
     IProjectRepository projectRepository,
+    ITaskDependencyRepository taskDependencyRepository,
     IMapper mapper
 ) : IProjectTaskService
 {
     private readonly IProjectTaskRepository _projectTaskRepository = projectTaskRepository;
     private readonly IProjectRepository _projectRepository = projectRepository;
+    private readonly ITaskDependencyRepository _taskDependencyRepository = taskDependencyRepository;
     private readonly IMapper _mapper = mapper;
 
     public async Task<TaskDto> CreateAsync(Guid projectId, CreateTaskDto dto)
@@ -52,7 +54,12 @@ public class ProjectTaskService(
             throw new KeyNotFoundException($"Task {id} not found.");
 
         existing = _mapper.Map(dto, existing);
-        var updated = await _projectTaskRepository.UpdateAsync(existing);
-        return _mapper.Map<TaskDto>(updated);
+        await _projectTaskRepository.UpdateAsync(existing);
+
+        var predecessorIds = dto.Dependencies.Select(Guid.Parse);
+        await _taskDependencyRepository.ReplaceForTaskAsync(id, predecessorIds);
+
+        var updated = await _projectTaskRepository.GetByIdAsync(id);
+        return _mapper.Map<TaskDto>(updated!);
     }
 }

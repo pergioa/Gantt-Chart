@@ -9,5 +9,6 @@ public record TaskDto(
     int Progress,
     Guid? ParentId,
     int Order,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string[] Dependencies
 );

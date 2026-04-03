@@ -21,7 +21,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
-        CreateMap<ProjectTask, TaskDto>();
+        CreateMap<ProjectTask, TaskDto>()
+            .ForMember(dest => dest.Dependencies, opt => opt.MapFrom(
+                src => src.Dependencies.Select(d => d.PredecessorId.ToString()).ToArray()));
 
         CreateMap<CreateTaskDto, ProjectTask>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -29,13 +31,15 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Project, opt => opt.Ignore())
             .ForMember(dest => dest.Parent, opt => opt.Ignore())
-            .ForMember(dest => dest.Children, opt => opt.Ignore());
+            .ForMember(dest => dest.Children, opt => opt.Ignore())
+            .ForMember(dest => dest.Dependencies, opt => opt.Ignore());
         CreateMap<UpdateTaskDto, ProjectTask>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.ProjectId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Project, opt => opt.Ignore())
             .ForMember(dest => dest.Parent, opt => opt.Ignore())
-            .ForMember(dest => dest.Children, opt => opt.Ignore());
+            .ForMember(dest => dest.Children, opt => opt.Ignore())
+            .ForMember(dest => dest.Dependencies, opt => opt.Ignore());
     }
 }

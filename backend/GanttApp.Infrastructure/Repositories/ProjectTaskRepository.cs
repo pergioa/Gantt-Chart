@@ -26,13 +26,17 @@ public class ProjectTaskRepository(AppDbContext context) : IProjectTaskRepositor
 
     public async Task<ProjectTask?> GetByIdAsync(Guid id)
     {
-        return await _dbSet.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
+        return await _dbSet
+            .AsNoTracking()
+            .Include(t => t.Dependencies)
+            .FirstOrDefaultAsync(t => t.Id == id);
     }
 
     public async Task<IEnumerable<ProjectTask>> GetByProjectIdAsync(Guid projectId)
     {
         return await _dbSet
             .AsNoTracking()
+            .Include(t => t.Dependencies)
             .Where(t => t.ProjectId == projectId)
             .OrderBy(t => t.Order)
             .ToListAsync();

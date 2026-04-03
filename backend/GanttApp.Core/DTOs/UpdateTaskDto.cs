@@ -6,5 +6,6 @@ public record UpdateTaskDto(
     DateTime StartDate,
     DateTime EndDate,
     int Order,
-    int Progress
+    int Progress,
+    string[] Dependencies
 );

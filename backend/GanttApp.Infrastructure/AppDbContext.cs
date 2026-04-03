@@ -8,6 +8,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<ProjectTask> ProjectTasks { get; set; }
+    public DbSet<TaskDependency> TaskDependencies { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -63,6 +64,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithMany(t => t.Children)
                 .HasForeignKey(t => t.ParentId)
                 .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TaskDependency>(e =>
+        {
+            e.HasKey(d => d.Id);
+            e.Property(d => d.Id).HasDefaultValueSql("gen_random_uuid()");
+
+            e.HasOne(d => d.Predecessor)
+                .WithMany()
+                .HasForeignKey(d => d.PredecessorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(d => d.Successor)
+                .WithMany(t => t.Dependencies)
+                .HasForeignKey(d => d.SuccessorId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

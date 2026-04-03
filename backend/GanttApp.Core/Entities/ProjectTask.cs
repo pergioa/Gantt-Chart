@@ -1,3 +1,5 @@
+using GanttApp.Core.Enums;
+
 namespace GanttApp.Core.Entities;
 
 public class ProjectTask
@@ -14,4 +16,5 @@ public class ProjectTask
     public int Order { get; set; }
     public DateTime CreatedAt { get; set; }
     public ICollection<ProjectTask> Children { get; set; } = [];
+    public ICollection<TaskDependency> Dependencies { get; set; } = [];
 }
