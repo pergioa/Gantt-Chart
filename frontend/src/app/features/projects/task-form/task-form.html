@@ -49,6 +49,25 @@
       }
     </div>
 
+    @if (availableTasks.length > 0) {
+      <div class="field">
+        <label>Dependencies</label>
+        <p class="field-hint">Select tasks that must finish before this one starts.</p>
+        <div class="dependency-list">
+          @for (task of availableTasks; track task.id) {
+            <label class="dependency-item">
+              <input
+                type="checkbox"
+                [checked]="selectedDependencies.has(task.id)"
+                (change)="toggleDependency(task.id)"
+              />
+              {{ task.title }}
+            </label>
+          }
+        </div>
+      </div>
+    }
+
     <div class="actions">
       <a class="btn btn-ghost" [routerLink]="['/projects', projectId]">Cancel</a>
       <button class="btn btn-primary" type="submit" [disabled]="form.invalid">

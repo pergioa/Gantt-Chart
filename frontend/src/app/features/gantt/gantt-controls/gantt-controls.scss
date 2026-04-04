@@ -1,0 +1,113 @@
+:host {
+  --bg-primary: #0f1117;
+  --bg-card: #21263a;
+  --accent: #6c63ff;
+  --accent-hover: #574fd6;
+  --text-primary: #e8eaf0;
+  --text-muted: #8b91a7;
+  --border: #2e3347;
+
+  display: block;
+}
+
+.gantt-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.view-modes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 17, 23, 0.88);
+  box-shadow: inset 0 1px 0 rgba(232, 234, 240, 0.02);
+}
+
+.mode-btn,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    transform 160ms ease;
+}
+
+.mode-btn {
+  min-width: 72px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.mode-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transform: none;
+}
+
+.mode-btn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(108, 99, 255, 0.2);
+}
+
+.mode-btn:focus-visible,
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.16);
+}
+
+.btn {
+  color: var(--text-primary);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.add-task-btn {
+  min-width: 120px;
+}
+
+@media (max-width: 640px) {
+  .gantt-controls {
+    width: 100%;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .view-modes {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .mode-btn,
+  .add-task-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

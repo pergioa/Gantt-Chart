@@ -1,0 +1,81 @@
+@if (task) {
+  <aside class="edit-panel">
+    <header class="panel-header">
+      <div class="header-copy">
+        <span class="eyebrow">Task details</span>
+        <h2>Edit task</h2>
+        <p>Update schedule, progress, and dependencies without leaving the timeline.</p>
+      </div>
+      <button class="close-btn" type="button" aria-label="Close task editor" (click)="closed.emit()">
+        <span aria-hidden="true">✕</span>
+      </button>
+    </header>
+
+    <section class="task-summary" aria-label="Selected task">
+      <div class="summary-card">
+        <span class="summary-label">Task</span>
+        <strong>{{ task.title }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Progress</span>
+        <strong>{{ task.progress }}%</strong>
+      </div>
+    </section>
+
+    <form class="panel-form" [formGroup]="form" (ngSubmit)="onSave()">
+      <div class="field">
+        <label for="ep-title">Title</label>
+        <input id="ep-title" type="text" formControlName="title" />
+        @if (form.get('title')?.touched && form.get('title')?.invalid) {
+          <div class="error">Title is required</div>
+        }
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label for="ep-start">Start Date</label>
+          <app-date-picker inputId="ep-start" formControlName="startDate" />
+        </div>
+        <div class="field">
+          <label for="ep-end">End Date</label>
+          <app-date-picker inputId="ep-end" formControlName="endDate" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="ep-progress">Progress</label>
+        <input id="ep-progress" type="number" min="0" max="100" formControlName="progress" />
+        <p class="field-hint">Enter a value from 0 to 100.</p>
+        @if (form.get('progress')?.touched && form.get('progress')?.invalid) {
+          <div class="error">Progress must be between 0 and 100</div>
+        }
+      </div>
+
+      @if (otherTasks.length > 0) {
+        <div class="field">
+          <label>Dependencies</label>
+          <p class="field-hint">Tasks that must finish before this one starts.</p>
+          <div class="dependency-list">
+            @for (t of otherTasks; track t.id) {
+              <label class="dependency-item">
+                <input
+                  type="checkbox"
+                  [checked]="selectedDependencies.has(t.id)"
+                  (change)="toggleDependency(t.id)"
+                />
+                {{ t.title }}
+              </label>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="panel-actions">
+        <button class="btn btn-danger" type="button" (click)="onDelete()">Delete task</button>
+        <button class="btn btn-primary" type="submit" [disabled]="form.invalid">Save changes</button>
+      </div>
+    </form>
+  </aside>
+
+  <div class="panel-backdrop" (click)="closed.emit()"></div>
+}

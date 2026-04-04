@@ -1,0 +1,25 @@
+<div class="gantt-controls">
+  <div class="view-modes">
+    <button
+      class="mode-btn"
+      type="button"
+      [class.active]="activeMode === 'Day'"
+      (click)="setViewMode('Day')"
+    >Day</button>
+    <button
+      class="mode-btn"
+      type="button"
+      [class.active]="activeMode === 'Week'"
+      (click)="setViewMode('Week')"
+    >Week</button>
+    <button
+      class="mode-btn"
+      type="button"
+      [class.active]="activeMode === 'Month'"
+      (click)="setViewMode('Month')"
+    >Month</button>
+  </div>
+  <button class="btn btn-primary add-task-btn" type="button" (click)="addTask.emit()">
+    Add Task
+  </button>
+</div>

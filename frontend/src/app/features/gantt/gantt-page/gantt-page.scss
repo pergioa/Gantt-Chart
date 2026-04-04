@@ -1,0 +1,125 @@
+:host {
+  --bg-primary: #0f1117;
+  --bg-surface: #1a1d27;
+  --bg-card: #21263a;
+  --accent: #6c63ff;
+  --accent-hover: #574fd6;
+  --text-primary: #e8eaf0;
+  --text-muted: #8b91a7;
+  --border: #2e3347;
+
+  display: block;
+  min-height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: system-ui, sans-serif;
+}
+
+.gantt-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.header-copy {
+  display: grid;
+  gap: 12px;
+  max-width: 700px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.header-copy p {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.gantt-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-caption {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gantt-status {
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 860px) {
+  .page-header,
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .gantt-page {
+    padding: 20px;
+  }
+
+  .page-header {
+    padding: 24px 20px;
+  }
+}

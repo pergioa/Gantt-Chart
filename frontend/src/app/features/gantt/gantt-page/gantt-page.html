@@ -1,0 +1,40 @@
+<section class="gantt-page">
+  <header class="page-header">
+    <div class="header-copy">
+      <span class="eyebrow">Project workspace</span>
+      <h1>Timeline</h1>
+      <p>Adjust schedules directly on the chart and keep execution dates aligned with the rest of the project.</p>
+    </div>
+
+    <app-gantt-controls
+      (viewModeChanged)="onViewModeChanged($event)"
+      (addTask)="onAddTask()"
+    />
+  </header>
+
+  <section class="gantt-section">
+    <div class="section-heading">
+      <h2>Gantt chart</h2>
+      <span class="section-caption">Drag tasks to update dates and progress</span>
+    </div>
+
+    @if (!tasksLoaded) {
+      <div class="gantt-status">Loading timeline...</div>
+    } @else {
+      <app-gantt-wrapper
+        [tasks]="frappeTasks"
+        (dateChanged)="onDateChanged($event)"
+        (progressChanged)="onProgressChanged($event)"
+        (taskClicked)="onTaskClicked($event)"
+      />
+    }
+  </section>
+</section>
+
+<app-task-edit-panel
+  [task]="selectedTask"
+  [allTasks]="allTasksList"
+  (closed)="selectedTask = null"
+  (saved)="onPanelSaved($event)"
+  (deleted)="onPanelDeleted($event)"
+/>

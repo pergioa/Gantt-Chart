@@ -5,6 +5,21 @@ import { environment } from '../../../environments/environment';
 import { Task, UpdateTask } from '../models/task.model';
 import { handleError } from './handle-error';
 
+export interface BatchTaskPayload {
+  id: string;
+  parentId: string | null;
+  title: string;
+  startDate: string;
+  endDate: string;
+  order: number;
+  progress: number;
+  dependencies: string[];
+}
+
+export interface BatchUpdatePayload {
+  tasks: BatchTaskPayload[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -22,5 +37,11 @@ export class TaskService {
     return this.httpClient
       .delete<void>(this.apiUrl + `/tasks/${id}`)
       .pipe(catchError(handleError('delete')));
+  }
+
+  public batchUpdate(projectId: string, payload: BatchUpdatePayload): Observable<Task[]> {
+    return this.httpClient
+      .patch<Task[]>(this.apiUrl + `/projects/${projectId}/tasks/batch`, payload)
+      .pipe(catchError(handleError('batchUpdate')));
   }
 }

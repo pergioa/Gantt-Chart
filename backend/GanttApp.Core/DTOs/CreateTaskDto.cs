@@ -6,5 +6,6 @@ public record CreateTaskDto(
     DateTime EndDate,
     int Progress,
     Guid? ParentId,
-    int Order
+    int Order,
+    string[] Dependencies
 );

@@ -32,7 +32,14 @@ public class ProjectTaskService(
 
         var created = await _projectTaskRepository.CreateAsync(entity);
 
-        return _mapper.Map<TaskDto>(created);
+        if (dto.Dependencies.Length > 0)
+        {
+            var predecessorIds = dto.Dependencies.Select(Guid.Parse);
+            await _taskDependencyRepository.ReplaceForTaskAsync(created.Id, predecessorIds);
+        }
+
+        var result = await _projectTaskRepository.GetByIdAsync(created.Id);
+        return _mapper.Map<TaskDto>(result!);
     }
 
     public async Task<IEnumerable<TaskDto>> BatchUpdateAsync(Guid projectId, BatchUpdateDto dto)

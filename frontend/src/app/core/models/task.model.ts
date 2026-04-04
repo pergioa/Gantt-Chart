@@ -7,7 +7,8 @@ export interface Task{
     progress:number,
     parentId:string | null,
     order:number,
-    createdAt:string
+    createdAt:string,
+    dependencies:string[]
 }
 
 export interface CreateTask{
@@ -16,7 +17,8 @@ export interface CreateTask{
     endDate:string,
     progress:number,
     parentId:string | null,
-    order:number
+    order:number,
+    dependencies:string[]
 }
 
 export interface UpdateTask{
@@ -25,5 +27,12 @@ export interface UpdateTask{
     endDate:string,
     progress:number,
     parentId:string | null,
-    order:number
+    order:number,
+    dependencies:string[]
+}
+
+export interface DragUpdateTask {
+    startDate: string;
+    endDate: string;
+    progress: number;
 }
