@@ -83,8 +83,9 @@ h2 {
 
 .gantt-section {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-direction: column;
+  max-height: 100%;
   min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -120,7 +121,9 @@ h2 {
 
 app-gantt-wrapper {
   display: block;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  align-self: stretch;
+  max-height: 100%;
   min-height: 0;
 }
 
