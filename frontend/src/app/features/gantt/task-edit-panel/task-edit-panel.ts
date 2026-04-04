@@ -202,9 +202,9 @@ export class TaskEditPanel implements OnChanges {
       const predecessorEnd = new Date(predecessor.endDate);
       const predecessorLabel = `"${predecessor.title}"`;
 
-      if (type === 'FinishToStart' && startDate.getTime() < predecessorEnd.getTime()) {
+      if (type === 'FinishToStart' && startDate.getTime() <= predecessorEnd.getTime()) {
         dependencyRules.push(
-          `Start date must be on or after ${predecessorLabel} end date for ${type}.`,
+          `Start date must be after ${predecessorLabel} end date for ${type}.`,
         );
       }
 

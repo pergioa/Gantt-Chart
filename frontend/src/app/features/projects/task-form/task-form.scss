@@ -103,11 +103,31 @@ input::placeholder {
   color: var(--text-muted);
 }
 
+select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 40px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%) calc(100% - 18px)
+      calc(50% - 3px) / 7px 7px no-repeat,
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%) calc(100% - 13px)
+      calc(50% - 3px) / 7px 7px no-repeat,
+    rgba(15, 17, 23, 0.88);
+  color: var(--text-primary);
+  font: inherit;
+  appearance: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
 app-date-picker {
   display: block;
 }
 
-input:focus {
+input:focus,
+select:focus,
+.btn:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.16);
@@ -161,11 +181,13 @@ input:focus {
   border-radius: 8px;
   background: rgba(15, 17, 23, 0.58);
   overflow-y: auto;
+  scrollbar-color: #2e3347 rgba(15, 17, 23, 0.4);
 }
 
 .dependency-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   min-height: 44px;
   padding: 10px 12px;
@@ -194,8 +216,26 @@ input:focus {
   accent-color: var(--accent);
 }
 
+.dependency-check {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .dependency-title {
   min-width: 0;
+}
+
+.dependency-type {
+  flex: 0 0 168px;
 }
 
 .dependency-empty {
@@ -271,6 +311,15 @@ input:focus {
   .field-grid,
   .actions {
     grid-template-columns: 1fr;
+  }
+
+  .dependency-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dependency-type {
+    flex-basis: auto;
   }
 
   .btn-ghost {

@@ -10,17 +10,25 @@
   --gantt-shell-padding: 20px;
 
   display: block;
+  height: 100%;
+  min-height: 0;
 }
 
 .gantt-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   position: relative;
   padding: var(--gantt-shell-padding);
   overflow: visible;
   background: linear-gradient(180deg, rgba(33, 38, 58, 0.24) 0%, rgba(26, 29, 39, 0) 100%);
+  box-sizing: border-box;
 }
 
 .gantt-container {
-  min-height: 420px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .gantt-popup-host {
@@ -96,7 +104,7 @@
 }
 
 :host ::ng-deep .gantt-container {
-  --g-arrow-color: rgba(139, 145, 167, 0.7);
+  --g-arrow-color: rgba(151, 169, 255, 0.92);
   --g-bar-color: #6c63ff;
   --g-bar-border: #6c63ff;
   --g-tick-color-thick: rgba(46, 51, 71, 0.95);
@@ -191,7 +199,38 @@
 }
 
 :host ::ng-deep .gantt .arrow {
-  stroke-width: 1.25;
+  stroke: var(--g-arrow-color);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 8px rgba(108, 99, 255, 0.18));
+}
+
+:host ::ng-deep .gantt .arrow path,
+:host ::ng-deep .gantt .arrow {
+  display: none;
+}
+
+:host ::ng-deep .gantt .custom-dependencies .custom-arrow {
+  fill: none;
+  stroke: rgba(151, 169, 255, 0.92);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 8px rgba(108, 99, 255, 0.16));
+}
+
+:host ::ng-deep .gantt .custom-dependencies .custom-arrow.dependency-ss {
+  stroke: rgba(103, 216, 196, 0.92);
+}
+
+:host ::ng-deep .gantt .custom-dependencies .custom-arrow.dependency-ff {
+  stroke: rgba(255, 186, 104, 0.92);
+}
+
+:host ::ng-deep .gantt .custom-arrowhead {
+  fill: currentColor;
+  color: rgba(151, 169, 255, 0.92);
 }
 
 :host ::ng-deep .gantt .handle.progress {

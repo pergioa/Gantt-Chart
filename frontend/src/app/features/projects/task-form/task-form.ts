@@ -140,8 +140,10 @@ export class TaskForm implements OnInit {
     const endControl = this.form.controls.endDate;
     const currentStart = startControl.value;
     const currentEnd = endControl.value;
+    const shouldUpdateStart = !startControl.dirty;
+    const shouldUpdateEnd = !endControl.dirty;
 
-    if (currentStart && currentEnd) {
+    if (!shouldUpdateStart && !shouldUpdateEnd) {
       return;
     }
 
@@ -158,7 +160,7 @@ export class TaskForm implements OnInit {
       const predecessorEnd = new Date(predecessor.endDate);
 
       if (type === 'FinishToStart') {
-        suggestedStart = this.maxDate(suggestedStart, predecessorEnd);
+        suggestedStart = this.maxDate(suggestedStart, this.addDays(predecessorEnd, 1));
       }
 
       if (type === 'StartToStart') {
@@ -170,16 +172,20 @@ export class TaskForm implements OnInit {
       }
     }
 
-    const nextStart = currentStart ?? suggestedStart;
-    const nextEnd = currentEnd ?? this.maxDate(suggestedEnd, nextStart);
+    const nextStart = shouldUpdateStart ? suggestedStart : currentStart;
+    const baselineStart = nextStart ?? currentStart;
+    const nextEnd = shouldUpdateEnd ? this.maxDate(suggestedEnd, baselineStart) : currentEnd;
 
     this.form.patchValue(
       {
-        startDate: nextStart,
-        endDate: nextEnd,
+        startDate: nextStart ?? currentStart,
+        endDate: nextEnd ?? currentEnd,
       },
       { emitEvent: false },
     );
+
+    this.form.updateValueAndValidity({ emitEvent: false });
+    this.cdr.detectChanges();
   }
 
   private maxDate(left: Date | null, right: Date | null): Date | null {
@@ -192,6 +198,12 @@ export class TaskForm implements OnInit {
     }
 
     return left.getTime() >= right.getTime() ? left : right;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
   }
 
   private validateSchedule(control: AbstractControl): ValidationErrors | null {
@@ -220,9 +232,9 @@ export class TaskForm implements OnInit {
       const predecessorEnd = new Date(predecessor.endDate);
       const predecessorLabel = `"${predecessor.title}"`;
 
-      if (type === 'FinishToStart' && startDate.getTime() < predecessorEnd.getTime()) {
+      if (type === 'FinishToStart' && startDate.getTime() <= predecessorEnd.getTime()) {
         dependencyRules.push(
-          `Start date must be on or after ${predecessorLabel} end date for ${type}.`,
+          `Start date must be after ${predecessorLabel} end date for ${type}.`,
         );
       }
 

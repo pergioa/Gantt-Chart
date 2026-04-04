@@ -1,3 +1,5 @@
+import { TaskDependencyItem } from './task.model';
+
 export interface FrappeTask {
   id: string,
   name: string,
@@ -6,4 +8,5 @@ export interface FrappeTask {
   progress: number,    // 0–100
   dependencies: string, // comma-separated predecessor IDs e.g. "task-1,task-2"
   custom_class?: string,
+  dependencyItems?: TaskDependencyItem[],
 }

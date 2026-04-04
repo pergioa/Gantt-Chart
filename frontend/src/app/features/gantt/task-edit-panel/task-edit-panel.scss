@@ -107,6 +107,7 @@ h2 {
 
 .close-btn:focus-visible,
 input:focus,
+select:focus,
 .btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.16);
@@ -181,6 +182,24 @@ input::placeholder {
   color: var(--text-muted);
 }
 
+select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 40px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%) calc(100% - 18px)
+      calc(50% - 3px) / 7px 7px no-repeat,
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%) calc(100% - 13px)
+      calc(50% - 3px) / 7px 7px no-repeat,
+    rgba(15, 17, 23, 0.88);
+  color: var(--text-primary);
+  font: inherit;
+  appearance: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
 app-date-picker {
   display: block;
 }
@@ -204,11 +223,13 @@ app-date-picker {
   border-radius: 8px;
   background: rgba(15, 17, 23, 0.58);
   overflow-y: auto;
+  scrollbar-color: #2e3347 rgba(15, 17, 23, 0.4);
 }
 
 .dependency-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   min-height: 44px;
   padding: 10px 12px;
@@ -235,6 +256,28 @@ app-date-picker {
   min-height: 0;
   padding: 0;
   accent-color: var(--accent);
+}
+
+.dependency-check {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.dependency-title {
+  min-width: 0;
+}
+
+.dependency-type {
+  flex: 0 0 168px;
 }
 
 .panel-actions {
@@ -296,16 +339,75 @@ app-date-picker {
   transform: none;
 }
 
+.btn-ghost {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transform: none;
+}
+
+.delete-confirm {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid rgba(224, 92, 92, 0.28);
+  border-radius: 10px;
+  background: rgba(224, 92, 92, 0.08);
+}
+
+.delete-confirm-message {
+  color: var(--text-primary);
+  line-height: 1.55;
+}
+
+.delete-confirm-message strong {
+  font-weight: 700;
+}
+
+.delete-confirm-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 @media (max-width: 640px) {
   .edit-panel {
     width: 100%;
     padding: 24px 20px;
   }
 
+  .dependency-item,
   .task-summary,
   .field-grid,
   .panel-actions {
     grid-template-columns: 1fr;
+  }
+
+  .dependency-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dependency-type {
+    flex-basis: auto;
+  }
+
+  .delete-confirm-actions {
+    flex-direction: column;
   }
 
   .btn-danger {

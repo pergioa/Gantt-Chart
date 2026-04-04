@@ -1,4 +1,5 @@
 import {
+  ChangeDetectorRef,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
@@ -40,6 +41,7 @@ export class DatePicker implements ControlValueAccessor {
   @Input() placeholder = 'MM/DD/YYYY';
 
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly displayFormatter = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
@@ -109,6 +111,7 @@ export class DatePicker implements ControlValueAccessor {
   writeValue(value: Date | string | null): void {
     this.selectedDate = this.normalizeDate(value);
     this.viewDate = this.startOfMonth(this.selectedDate ?? new Date());
+    this.cdr.markForCheck();
   }
 
   registerOnChange(fn: (value: Date | null) => void): void {
@@ -124,6 +127,7 @@ export class DatePicker implements ControlValueAccessor {
     if (isDisabled) {
       this.isOpen = false;
     }
+    this.cdr.markForCheck();
   }
 
   protected toggleCalendar(): void {

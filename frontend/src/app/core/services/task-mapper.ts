@@ -14,6 +14,7 @@ export class TaskMapper {
       end: dto.endDate.split('T')[0],
       progress: dto.progress,
       dependencies: dto.dependencies.map((d) => d.predecessorId).join(','),
+      dependencyItems: dto.dependencies,
     };
   }
 
