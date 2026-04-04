@@ -42,6 +42,14 @@
         </div>
       </div>
 
+      @if ((form.get('startDate')?.touched || form.get('endDate')?.touched || selectedDependencies.size > 0) && scheduleErrors.length > 0) {
+        <div class="field">
+          @for (message of scheduleErrors; track message) {
+            <div class="error">{{ message }}</div>
+          }
+        </div>
+      }
+
       <div class="field">
         <label for="ep-progress">Progress</label>
         <input id="ep-progress" type="number" min="0" max="100" formControlName="progress" />
@@ -57,14 +65,27 @@
           <p class="field-hint">Tasks that must finish before this one starts.</p>
           <div class="dependency-list">
             @for (t of otherTasks; track t.id) {
-              <label class="dependency-item">
-                <input
-                  type="checkbox"
-                  [checked]="selectedDependencies.has(t.id)"
-                  (change)="toggleDependency(t.id)"
-                />
-                {{ t.title }}
-              </label>
+              <div class="dependency-item">
+                <label class="dependency-check">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(t.id)"
+                    (change)="toggleDependency(t.id)"
+                  />
+                  <span class="dependency-title">{{ t.title }}</span>
+                </label>
+                @if (isSelected(t.id)) {
+                  <select
+                    class="dependency-type"
+                    [value]="selectedDependencies.get(t.id)"
+                    (change)="setDependencyType(t.id, $any($event.target).value)"
+                  >
+                    @for (type of dependencyTypes; track type) {
+                      <option [value]="type">{{ type }}</option>
+                    }
+                  </select>
+                }
+              </div>
             }
           </div>
         </div>
@@ -75,6 +96,24 @@
         <button class="btn btn-primary" type="submit" [disabled]="form.invalid">Save changes</button>
       </div>
     </form>
+
+    @if (showDeleteConfirm) {
+      <div class="delete-confirm">
+        <p class="delete-confirm-message">
+          <strong>{{ task.title }}</strong> is a predecessor for the following tasks.
+          Deleting it will remove those dependencies — their schedules won't be adjusted automatically.
+        </p>
+        <ul class="delete-confirm-list">
+          @for (t of deleteWarningTasks; track t.id) {
+            <li>{{ t.title }}</li>
+          }
+        </ul>
+        <div class="delete-confirm-actions">
+          <button class="btn btn-ghost" type="button" (click)="cancelDelete()">Cancel</button>
+          <button class="btn btn-danger" type="button" (click)="confirmDelete()">Delete anyway</button>
+        </div>
+      </div>
+    }
   </aside>
 
   <div class="panel-backdrop" (click)="closed.emit()"></div>

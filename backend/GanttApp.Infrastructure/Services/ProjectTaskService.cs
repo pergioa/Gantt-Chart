@@ -33,10 +33,7 @@ public class ProjectTaskService(
         var created = await _projectTaskRepository.CreateAsync(entity);
 
         if (dto.Dependencies.Length > 0)
-        {
-            var predecessorIds = dto.Dependencies.Select(Guid.Parse);
-            await _taskDependencyRepository.ReplaceForTaskAsync(created.Id, predecessorIds);
-        }
+            await _taskDependencyRepository.ReplaceForTaskAsync(created.Id, dto.Dependencies);
 
         var result = await _projectTaskRepository.GetByIdAsync(created.Id);
         return _mapper.Map<TaskDto>(result!);
@@ -82,6 +79,7 @@ public class ProjectTaskService(
 
     public async Task DeleteAsync(Guid id)
     {
+        await _taskDependencyRepository.DeleteForTaskAsync(id);
         await _projectTaskRepository.DeleteAsync(id);
     }
 
@@ -105,8 +103,7 @@ public class ProjectTaskService(
         existing = _mapper.Map(dto, existing);
         await _projectTaskRepository.UpdateAsync(existing);
 
-        var predecessorIds = dto.Dependencies.Select(Guid.Parse);
-        await _taskDependencyRepository.ReplaceForTaskAsync(id, predecessorIds);
+        await _taskDependencyRepository.ReplaceForTaskAsync(id, dto.Dependencies);
 
         var updated = await _projectTaskRepository.GetByIdAsync(id);
         return _mapper.Map<TaskDto>(updated!);

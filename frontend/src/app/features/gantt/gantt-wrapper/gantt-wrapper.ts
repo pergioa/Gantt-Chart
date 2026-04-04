@@ -57,6 +57,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     if (this.layoutTimeoutId !== null) {
       clearTimeout(this.layoutTimeoutId);
     }
+    this.clearPopupHost();
     this.gantt = null;
   }
 
@@ -107,6 +108,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   private renderGantt(): void {
     const container = this.container.nativeElement as HTMLDivElement;
     container.innerHTML = '';
+    this.clearPopupHost();
 
     if (!this.tasks.length) {
       this.gantt = null;
@@ -115,16 +117,32 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
 
     this.gantt = new Gantt(container, this.tasks, {
       view_mode: this.currentViewMode,
+      popup_on: 'hover',
       scroll_to: 'today',
       on_date_change: (task: FrappeTask, start: Date, end: Date) =>
         this.dateChanged.emit({ task, start, end }),
       on_progress_change: (task: FrappeTask, progress: number) =>
         this.progressChanged.emit({ task, progress }),
-      on_click: (task: FrappeTask) => this.taskClicked.emit(task),
+      on_click: (task: FrappeTask) => {
+        this.hidePopup();
+        this.taskClicked.emit(task);
+      },
     });
 
     this.attachPopupToOverlay();
     this.scheduleInitialLayout();
+  }
+
+  private clearPopupHost(): void {
+    if (!this.popupHost) {
+      return;
+    }
+
+    this.popupHost.nativeElement.innerHTML = '';
+  }
+
+  private hidePopup(): void {
+    this.gantt?.hide_popup?.();
   }
 
   private scheduleInitialLayout(): void {

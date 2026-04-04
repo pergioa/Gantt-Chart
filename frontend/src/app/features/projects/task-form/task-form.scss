@@ -125,6 +125,88 @@ input:focus {
   font-size: 12px;
 }
 
+.dependency-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dependency-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(108, 99, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(108, 99, 255, 0.12);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dependency-search {
+  margin-top: 8px;
+}
+
+.dependency-list {
+  display: grid;
+  gap: 10px;
+  max-height: 220px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 17, 23, 0.58);
+  overflow-y: auto;
+}
+
+.dependency-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.dependency-item:hover {
+  border-color: var(--border);
+  background: var(--bg-card);
+}
+
+.dependency-item input {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.dependency-title {
+  min-width: 0;
+}
+
+.dependency-empty {
+  display: grid;
+  place-items: center;
+  min-height: 88px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 .actions {
   display: grid;
   grid-template-columns: auto 1fr;

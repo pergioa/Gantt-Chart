@@ -40,6 +40,14 @@
       </div>
     </div>
 
+    @if ((form.get('startDate')?.touched || form.get('endDate')?.touched || selectedDependencies.size > 0) && scheduleErrors.length > 0) {
+      <div class="field">
+        @for (message of scheduleErrors; track message) {
+          <div class="error">{{ message }}</div>
+        }
+      </div>
+    }
+
     <div class="field">
       <label for="task-progress">Progress</label>
       <input id="task-progress" type="number" min="0" max="100" formControlName="progress" />
@@ -51,18 +59,48 @@
 
     @if (availableTasks.length > 0) {
       <div class="field">
-        <label>Dependencies</label>
+        <div class="dependency-header">
+          <label for="dependency-search">Dependencies</label>
+          @if (selectedDependencies.size > 0) {
+            <span class="dependency-count">{{ selectedDependencies.size }} selected</span>
+          }
+        </div>
         <p class="field-hint">Select tasks that must finish before this one starts.</p>
+        <input
+          id="dependency-search"
+          class="dependency-search"
+          type="text"
+          placeholder="Filter tasks by name"
+          [value]="dependencySearch"
+          (input)="onDependencySearch($event)"
+        />
         <div class="dependency-list">
-          @for (task of availableTasks; track task.id) {
-            <label class="dependency-item">
-              <input
-                type="checkbox"
-                [checked]="selectedDependencies.has(task.id)"
-                (change)="toggleDependency(task.id)"
-              />
-              {{ task.title }}
-            </label>
+          @if (filteredAvailableTasks.length > 0) {
+            @for (task of filteredAvailableTasks; track task.id) {
+              <div class="dependency-item">
+                <label class="dependency-check">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(task.id)"
+                    (change)="toggleDependency(task.id)"
+                  />
+                  <span class="dependency-title">{{ task.title }}</span>
+                </label>
+                @if (isSelected(task.id)) {
+                  <select
+                    class="dependency-type"
+                    [value]="selectedDependencies.get(task.id)"
+                    (change)="setDependencyType(task.id, $any($event.target).value)"
+                  >
+                    @for (type of dependencyTypes; track type) {
+                      <option [value]="type">{{ type }}</option>
+                    }
+                  </select>
+                }
+              </div>
+            }
+          } @else {
+            <div class="dependency-empty">No tasks match that filter.</div>
           }
         </div>
       </div>

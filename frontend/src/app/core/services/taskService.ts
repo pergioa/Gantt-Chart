@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { catchError, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Task, UpdateTask } from '../models/task.model';
+import { Task, TaskDependencyItem, UpdateTask } from '../models/task.model';
 import { handleError } from './handle-error';
 
 export interface BatchTaskPayload {
@@ -13,7 +13,7 @@ export interface BatchTaskPayload {
   endDate: string;
   order: number;
   progress: number;
-  dependencies: string[];
+  dependencies: TaskDependencyItem[];
 }
 
 export interface BatchUpdatePayload {

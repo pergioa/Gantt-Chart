@@ -10,5 +10,5 @@ public record TaskDto(
     Guid? ParentId,
     int Order,
     DateTime CreatedAt,
-    string[] Dependencies
+    TaskDependencyDto[] Dependencies
 );

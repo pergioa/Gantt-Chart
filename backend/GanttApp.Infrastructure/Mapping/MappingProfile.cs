@@ -21,9 +21,12 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
+        CreateMap<TaskDependency, TaskDependencyDto>()
+            .ForCtorParam("predecessorId", opt => opt.MapFrom(src => src.PredecessorId.ToString()))
+            .ForCtorParam("type", opt => opt.MapFrom(src => src.Type));
+
         CreateMap<ProjectTask, TaskDto>()
-            .ForMember(dest => dest.Dependencies, opt => opt.MapFrom(
-                src => src.Dependencies.Select(d => d.PredecessorId.ToString()).ToArray()));
+            .ForMember(dest => dest.Dependencies, opt => opt.MapFrom(src => src.Dependencies));
 
         CreateMap<CreateTaskDto, ProjectTask>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())

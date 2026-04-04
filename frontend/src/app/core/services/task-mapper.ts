@@ -13,7 +13,7 @@ export class TaskMapper {
       start: dto.startDate.split('T')[0],
       end: dto.endDate.split('T')[0],
       progress: dto.progress,
-      dependencies: dto.dependencies.join(','),
+      dependencies: dto.dependencies.map((d) => d.predecessorId).join(','),
     };
   }
 

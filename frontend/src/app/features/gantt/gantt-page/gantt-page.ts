@@ -30,7 +30,7 @@ export class GanttPage implements OnInit, OnDestroy {
   selectedTask: Task | null = null;
 
   get allTasksList(): Task[] {
-    return Array.from(this.taskMap.values());
+    return this.getOrderedTasks();
   }
   @ViewChild(GanttWrapper) ganttWrapper?: GanttWrapper;
   private pendingInitialViewMode: ViewMode | null = 'Day';
@@ -46,7 +46,7 @@ export class GanttPage implements OnInit, OnDestroy {
     this.projectService.getTasks(this.projectId).subscribe((tasks) => {
       this.tasksLoaded = true;
       tasks.forEach((t) => this.taskMap.set(t.id, t));
-      this.frappeTasks = tasks.map((t) => this.mapper.toFrappeTask(t));
+      this.refreshChartTasks();
       this.cdr.detectChanges();
       this.applyInitialViewMode();
     });
@@ -62,9 +62,7 @@ export class GanttPage implements OnInit, OnDestroy {
       )
       .subscribe((updatedTasks) => {
         updatedTasks.forEach((t) => this.taskMap.set(t.id, t));
-        this.frappeTasks = Array.from(this.taskMap.values()).map((t) =>
-          this.mapper.toFrappeTask(t),
-        );
+        this.refreshChartTasks();
         this.pendingChanges.clear();
         this.cdr.detectChanges();
       });
@@ -109,14 +107,25 @@ export class GanttPage implements OnInit, OnDestroy {
 
   onPanelSaved(updated: Task): void {
     this.taskMap.set(updated.id, updated);
-    this.frappeTasks = Array.from(this.taskMap.values()).map((t) => this.mapper.toFrappeTask(t));
+    this.refreshChartTasks();
     this.selectedTask = null;
   }
 
   onPanelDeleted(taskId: string): void {
     this.taskMap.delete(taskId);
-    this.frappeTasks = Array.from(this.taskMap.values()).map((t) => this.mapper.toFrappeTask(t));
+    this.pendingChanges.delete(taskId);
+
+    // Strip the deleted task from any other task's dependency list in memory
+    for (const [id, task] of this.taskMap) {
+      const filtered = task.dependencies.filter((d) => d.predecessorId !== taskId);
+      if (filtered.length !== task.dependencies.length) {
+        this.taskMap.set(id, { ...task, dependencies: filtered });
+      }
+    }
+
+    this.refreshChartTasks();
     this.selectedTask = null;
+    this.cdr.detectChanges();
   }
 
   onViewModeChanged(mode: ViewMode): void {
@@ -143,5 +152,80 @@ export class GanttPage implements OnInit, OnDestroy {
         this.ganttWrapper?.setViewMode(this.pendingInitialViewMode!);
       });
     });
+  }
+
+  private refreshChartTasks(): void {
+    this.frappeTasks = this.getOrderedTasks().map((task) => this.mapper.toFrappeTask(task));
+  }
+
+  private getOrderedTasks(): Task[] {
+    const tasks = Array.from(this.taskMap.values());
+    const tasksById = new Map(tasks.map((task) => [task.id, task]));
+    const incomingCounts = new Map<string, number>();
+    const successors = new Map<string, Task[]>();
+    const rendered = new Set<string>();
+    const ordered: Task[] = [];
+
+    for (const task of tasks) {
+      incomingCounts.set(task.id, 0);
+      successors.set(task.id, []);
+    }
+
+    for (const task of tasks) {
+      for (const dependency of task.dependencies) {
+        if (!tasksById.has(dependency.predecessorId)) {
+          continue;
+        }
+
+        incomingCounts.set(task.id, (incomingCounts.get(task.id) ?? 0) + 1);
+        successors.get(dependency.predecessorId)?.push(task);
+      }
+    }
+
+    const sortTasks = (left: Task, right: Task): number => {
+      if (left.order !== right.order) {
+        return left.order - right.order;
+      }
+
+      return left.title.localeCompare(right.title);
+    };
+
+    for (const list of successors.values()) {
+      list.sort(sortTasks);
+    }
+
+    const ready = tasks
+      .filter((task) => (incomingCounts.get(task.id) ?? 0) === 0)
+      .sort(sortTasks);
+
+    const visit = (task: Task): void => {
+      if (rendered.has(task.id)) {
+        return;
+      }
+
+      rendered.add(task.id);
+      ordered.push(task);
+
+      for (const successor of successors.get(task.id) ?? []) {
+        const nextCount = (incomingCounts.get(successor.id) ?? 0) - 1;
+        incomingCounts.set(successor.id, nextCount);
+
+        if (nextCount === 0) {
+          visit(successor);
+        }
+      }
+    };
+
+    for (const task of ready) {
+      visit(task);
+    }
+
+    for (const task of tasks.sort(sortTasks)) {
+      if (!rendered.has(task.id)) {
+        visit(task);
+      }
+    }
+
+    return ordered;
   }
 }

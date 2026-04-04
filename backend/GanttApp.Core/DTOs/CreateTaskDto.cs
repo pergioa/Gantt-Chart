@@ -7,5 +7,5 @@ public record CreateTaskDto(
     int Progress,
     Guid? ParentId,
     int Order,
-    string[] Dependencies
+    TaskDependencyDto[] Dependencies
 );

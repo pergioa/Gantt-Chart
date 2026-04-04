@@ -1,3 +1,4 @@
+using GanttApp.Core.DTOs;
 using GanttApp.Core.Entities;
 using GanttApp.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -16,16 +17,27 @@ public class TaskDependencyRepository(AppDbContext context) : ITaskDependencyRep
             .ToListAsync();
     }
 
-    public async Task ReplaceForTaskAsync(Guid successorId, IEnumerable<Guid> predecessorIds)
+    public async Task DeleteForTaskAsync(Guid taskId)
+    {
+        var rows = await _dbSet
+            .Where(d => d.SuccessorId == taskId || d.PredecessorId == taskId)
+            .ToListAsync();
+
+        _dbSet.RemoveRange(rows);
+        await context.SaveChangesAsync();
+    }
+
+    public async Task ReplaceForTaskAsync(Guid successorId, IEnumerable<TaskDependencyDto> dependencies)
     {
         var existing = await _dbSet.Where(d => d.SuccessorId == successorId).ToListAsync();
 
         _dbSet.RemoveRange(existing);
 
-        var incoming = predecessorIds.Select(predecessorId => new TaskDependency
+        var incoming = dependencies.Select(dep => new TaskDependency
         {
-            PredecessorId = predecessorId,
+            PredecessorId = Guid.Parse(dep.PredecessorId),
             SuccessorId = successorId,
+            Type = dep.Type,
         });
 
         await _dbSet.AddRangeAsync(incoming);

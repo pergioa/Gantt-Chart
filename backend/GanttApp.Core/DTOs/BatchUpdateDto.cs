@@ -8,7 +8,7 @@ public record BatchTaskDto(
     DateTime EndDate,
     int Order,
     int Progress,
-    string[] Dependencies
+    TaskDependencyDto[] Dependencies
 );
 
 public record BatchUpdateDto(List<BatchTaskDto> Tasks);

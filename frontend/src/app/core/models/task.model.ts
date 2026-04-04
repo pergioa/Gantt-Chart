@@ -1,3 +1,10 @@
+export type DependencyType = 'FinishToStart' | 'StartToStart' | 'FinishToFinish';
+
+export interface TaskDependencyItem {
+    predecessorId: string;
+    type: DependencyType;
+}
+
 export interface Task{
     id:string,
     projectId:string,
@@ -8,7 +15,7 @@ export interface Task{
     parentId:string | null,
     order:number,
     createdAt:string,
-    dependencies:string[]
+    dependencies:TaskDependencyItem[]
 }
 
 export interface CreateTask{
@@ -18,7 +25,7 @@ export interface CreateTask{
     progress:number,
     parentId:string | null,
     order:number,
-    dependencies:string[]
+    dependencies:TaskDependencyItem[]
 }
 
 export interface UpdateTask{
@@ -28,7 +35,7 @@ export interface UpdateTask{
     progress:number,
     parentId:string | null,
     order:number,
-    dependencies:string[]
+    dependencies:TaskDependencyItem[]
 }
 
 export interface DragUpdateTask {
