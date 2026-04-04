@@ -15,13 +15,15 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
 
     public async Task CommitAsync()
     {
-        if (_transaction is null) return;
+        if (_transaction is null)
+            return;
         await _transaction.CommitAsync();
     }
 
     public async Task RollbackAsync()
     {
-        if (_transaction is null) return;
+        if (_transaction is null)
+            return;
         await _transaction.RollbackAsync();
     }
 
