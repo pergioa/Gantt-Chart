@@ -9,12 +9,16 @@ public class ProjectTaskService(
     IProjectTaskRepository projectTaskRepository,
     IProjectRepository projectRepository,
     ITaskDependencyRepository taskDependencyRepository,
+    ISchedulerService schedulerService,
+    IUnitOfWork unitOfWork,
     IMapper mapper
 ) : IProjectTaskService
 {
     private readonly IProjectTaskRepository _projectTaskRepository = projectTaskRepository;
     private readonly IProjectRepository _projectRepository = projectRepository;
     private readonly ITaskDependencyRepository _taskDependencyRepository = taskDependencyRepository;
+    private readonly ISchedulerService _schedulerService = schedulerService;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly IMapper _mapper = mapper;
 
     public async Task<TaskDto> CreateAsync(Guid projectId, CreateTaskDto dto)
@@ -29,6 +33,44 @@ public class ProjectTaskService(
         var created = await _projectTaskRepository.CreateAsync(entity);
 
         return _mapper.Map<TaskDto>(created);
+    }
+
+    public async Task<IEnumerable<TaskDto>> BatchUpdateAsync(Guid projectId, BatchUpdateDto dto)
+    {
+        await _unitOfWork.BeginTransactionAsync();
+
+        try
+        {
+            var affectedById = new Dictionary<Guid, TaskDto>();
+
+            foreach (var item in dto.Tasks)
+            {
+                var updateDto = new UpdateTaskDto(
+                    item.ParentId,
+                    item.Title,
+                    item.StartDate,
+                    item.EndDate,
+                    item.Order,
+                    item.Progress,
+                    item.Dependencies
+                );
+
+                var updated = await UpdateAsync(item.Id, updateDto);
+                affectedById[updated.Id] = updated;
+
+                var cascaded = await _schedulerService.CascadeTaskDatesAsync(projectId, item.Id);
+                foreach (var t in cascaded)
+                    affectedById[t.Id] = t;
+            }
+
+            await _unitOfWork.CommitAsync();
+            return affectedById.Values;
+        }
+        catch
+        {
+            await _unitOfWork.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task DeleteAsync(Guid id)

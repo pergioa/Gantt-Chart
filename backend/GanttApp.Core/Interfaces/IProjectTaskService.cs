@@ -8,5 +8,6 @@ public interface IProjectTaskService
 
     Task<TaskDto> CreateAsync(Guid projectId, CreateTaskDto dto);
     Task<TaskDto> UpdateAsync(Guid id, UpdateTaskDto dto);
+    Task<IEnumerable<TaskDto>> BatchUpdateAsync(Guid projectId, BatchUpdateDto dto);
     Task DeleteAsync(Guid id);
 }

@@ -63,4 +63,11 @@ public class ProjectsController(
         var result = await _projectTaskService.CreateAsync(projectId, createTaskDto);
         return CreatedAtAction(nameof(GetTasks), new { projectId }, result);
     }
+
+    [HttpPatch("{id:guid}/tasks/batch")]
+    public async Task<IActionResult> BatchUpdate(Guid id, [FromBody] BatchUpdateDto dto)
+    {
+        var result = await _projectTaskService.BatchUpdateAsync(id, dto);
+        return Ok(result);
+    }
 }
