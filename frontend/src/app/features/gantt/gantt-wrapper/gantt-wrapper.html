@@ -1,4 +1,10 @@
 <div class="gantt-shell">
-  <div #ganttContainer class="gantt-container"></div>
+  <div #ganttContainer class="gantt-container" [class.is-rendering]="isRendering()"></div>
+  @if (isRendering()) {
+    <div class="gantt-loading" aria-live="polite" aria-busy="true">
+      <div class="gantt-loading__spinner"></div>
+      <span>Updating timeline…</span>
+    </div>
+  }
   <div #popupHost class="gantt-popup-host"></div>
 </div>

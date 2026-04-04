@@ -7,6 +7,7 @@ import {
   OnChanges,
   OnDestroy,
   Output,
+  signal,
   SimpleChanges,
   ViewChild,
 } from '@angular/core';
@@ -27,6 +28,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   @Output() dateChanged = new EventEmitter<{ task: FrappeTask; start: Date; end: Date }>();
   @Output() progressChanged = new EventEmitter<{ task: FrappeTask; progress: number }>();
   @Output() taskClicked = new EventEmitter<FrappeTask>();
+  protected readonly isRendering = signal(false);
 
   @ViewChild('ganttContainer') container!: ElementRef;
   @ViewChild('popupHost') popupHost!: ElementRef<HTMLDivElement>;
@@ -36,12 +38,21 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   private currentColumnWidth: number | null = null;
   private viewInitialized = false;
   private resizeObserver: ResizeObserver | null = null;
+  private lastObservedContainerWidth = 0;
   private layoutFrameId: number | null = null;
   private layoutTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private dependencyRedrawTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private dependencyRedrawFrameId: number | null = null;
+  private dragRedrawFrameId: number | null = null;
+  private loaderTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private readonly svgNs = 'http://www.w3.org/2000/svg';
   private pendingScrollLeft: number | null = null;
+  private redrawSequence = 0;
+  private activeLoaderToken: number | null = null;
+  private nextLoaderToken = 0;
+  private isDateDragActive = false;
+  private lastDragEmission = new Map<string, string>();
+  private readonly debugLoggingEnabled = true;
 
   ngAfterViewInit(): void {
     this.viewInitialized = true;
@@ -56,6 +67,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.detachLiveDragTracking();
     this.resizeObserver?.disconnect();
     if (this.layoutFrameId !== null) {
       cancelAnimationFrame(this.layoutFrameId);
@@ -69,6 +81,12 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     if (this.dependencyRedrawFrameId !== null) {
       cancelAnimationFrame(this.dependencyRedrawFrameId);
     }
+    if (this.dragRedrawFrameId !== null) {
+      cancelAnimationFrame(this.dragRedrawFrameId);
+    }
+    if (this.loaderTimeoutId !== null) {
+      clearTimeout(this.loaderTimeoutId);
+    }
     this.clearPopupHost();
     this.gantt = null;
   }
@@ -78,6 +96,13 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     this.currentColumnWidth = null;
 
     if (this.viewInitialized) {
+      this.activeLoaderToken = ++this.nextLoaderToken;
+      this.isRendering.set(true);
+      this.debugLog('setViewMode:start', {
+        mode,
+        loaderToken: this.activeLoaderToken,
+      });
+      this.armLoaderFallback(this.activeLoaderToken);
       this.renderGantt();
     }
   }
@@ -121,11 +146,23 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     const container = this.container.nativeElement as HTMLDivElement;
     const existingScrollHost = container.querySelector('.gantt-container') as HTMLDivElement | null;
     this.pendingScrollLeft = existingScrollHost?.scrollLeft ?? null;
+    this.detachLiveDragTracking();
     container.innerHTML = '';
     this.clearPopupHost();
+    this.debugLog('renderGantt:start', {
+      tasks: this.tasks.length,
+      viewMode: this.currentViewMode,
+      loaderToken: this.activeLoaderToken,
+    });
 
     if (!this.tasks.length) {
       this.gantt = null;
+      this.isRendering.set(false);
+      this.activeLoaderToken = null;
+      if (this.loaderTimeoutId !== null) {
+        clearTimeout(this.loaderTimeoutId);
+        this.loaderTimeoutId = null;
+      }
       return;
     }
 
@@ -148,13 +185,17 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     const desiredColumnWidth = this.getDesiredColumnWidth();
     if (desiredColumnWidth !== null && desiredColumnWidth !== seededColumnWidth) {
       this.currentColumnWidth = desiredColumnWidth;
+      this.debugLog('renderGantt:rerender-for-column-width', {
+        seededColumnWidth,
+        desiredColumnWidth,
+        loaderToken: this.activeLoaderToken,
+      });
       this.renderGantt();
       return;
     }
 
-    this.attachCustomDependencyHooks();
     this.attachPopupToOverlay();
-    this.scheduleDependencyRedraw();
+    this.attachLiveDragTracking();
     this.scheduleInitialLayout();
   }
 
@@ -170,6 +211,30 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     this.gantt?.hide_popup?.();
   }
 
+  private attachLiveDragTracking(): void {
+    const svg = this.container.nativeElement.querySelector('svg.gantt') as SVGSVGElement | null;
+    if (!svg) {
+      return;
+    }
+
+    svg.addEventListener('mousedown', this.handleSvgPointerDown);
+    svg.addEventListener('mousemove', this.handleSvgPointerMove);
+    document.addEventListener('mouseup', this.handleDocumentPointerUp);
+  }
+
+  private detachLiveDragTracking(): void {
+    const svg = this.container?.nativeElement?.querySelector?.('svg.gantt') as SVGSVGElement | null;
+    svg?.removeEventListener('mousedown', this.handleSvgPointerDown);
+    svg?.removeEventListener('mousemove', this.handleSvgPointerMove);
+    document.removeEventListener('mouseup', this.handleDocumentPointerUp);
+    this.isDateDragActive = false;
+    this.lastDragEmission.clear();
+    if (this.dragRedrawFrameId !== null) {
+      cancelAnimationFrame(this.dragRedrawFrameId);
+      this.dragRedrawFrameId = null;
+    }
+  }
+
   private scheduleInitialLayout(): void {
     if (this.layoutFrameId !== null) {
       cancelAnimationFrame(this.layoutFrameId);
@@ -180,26 +245,56 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
 
     this.layoutFrameId = requestAnimationFrame(() => {
       this.layoutFrameId = null;
+      this.debugLog('scheduleInitialLayout:animation-frame', {
+        loaderToken: this.activeLoaderToken,
+      });
       this.runLayoutPass();
     });
 
     this.layoutTimeoutId = setTimeout(() => {
       this.layoutTimeoutId = null;
+      this.debugLog('scheduleInitialLayout:timeout', {
+        loaderToken: this.activeLoaderToken,
+      });
       this.runLayoutPass();
     }, 40);
   }
 
   private runLayoutPass(): void {
     if (!this.gantt) {
+      this.debugLog('runLayoutPass:skipped-no-gantt', {
+        loaderToken: this.activeLoaderToken,
+      });
       return;
     }
 
+    const desiredColumnWidth = this.getDesiredColumnWidth();
+    if (desiredColumnWidth !== null && desiredColumnWidth !== this.currentColumnWidth) {
+      this.currentColumnWidth = desiredColumnWidth;
+      this.debugLog('runLayoutPass:rerender-for-column-width', {
+        desiredColumnWidth,
+        loaderToken: this.activeLoaderToken,
+        viewMode: this.currentViewMode,
+      });
+      this.renderGantt();
+      return;
+    }
+
+    this.debugLog('runLayoutPass:start', {
+      loaderToken: this.activeLoaderToken,
+      viewMode: this.currentViewMode,
+    });
     this.gantt.refresh(this.tasks);
-    const fallbackMode: ViewMode = this.currentViewMode === 'Day' ? 'Week' : 'Day';
-    this.gantt.change_view_mode(fallbackMode, true);
     this.gantt.change_view_mode(this.currentViewMode, true);
-    this.restoreScrollPosition();
-    this.scheduleDependencyRedraw();
+    requestAnimationFrame(() => {
+      this.debugLog('runLayoutPass:post-render-frame', {
+        loaderToken: this.activeLoaderToken,
+        viewMode: this.currentViewMode,
+      });
+      this.freezeSvgAnimations();
+      this.restoreScrollPosition();
+      this.scheduleDependencyRedraw();
+    });
   }
 
   private observeContainerResize(): void {
@@ -214,7 +309,13 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       }
 
       const { width, height } = entry.contentRect;
-      if (width > 0 && height > 0) {
+      if (width > 0 && height > 0 && Math.round(width) !== this.lastObservedContainerWidth) {
+        this.lastObservedContainerWidth = Math.round(width);
+        this.debugLog('observeContainerResize:trigger-layout', {
+          width,
+          height,
+          loaderToken: this.activeLoaderToken,
+        });
         this.scheduleInitialLayout();
       }
     });
@@ -240,9 +341,105 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     this.gantt.scroll_current?.();
   }
 
-  private drawCustomDependencies(): void {
+  private readonly handleSvgPointerDown = (event: MouseEvent): void => {
+    const target = event.target as Element | null;
+    if (!target) {
+      return;
+    }
+
+    const isDateHandle = target.classList.contains('bar-wrapper')
+      || target.classList.contains('left')
+      || target.classList.contains('right')
+      || target.closest('.bar-wrapper') !== null;
+    const isProgressHandle = target.classList.contains('progress');
+
+    if (!isDateHandle || isProgressHandle) {
+      return;
+    }
+
+    this.isDateDragActive = true;
+    this.lastDragEmission.clear();
+    this.hidePopup();
+    this.debugLog('liveDrag:start', {
+      activeLoaderToken: this.activeLoaderToken,
+    });
+  };
+
+  private readonly handleSvgPointerMove = (): void => {
+    if (!this.isDateDragActive || !this.gantt?.bar_being_dragged) {
+      return;
+    }
+
+    if (this.dragRedrawFrameId !== null) {
+      return;
+    }
+
+    this.dragRedrawFrameId = requestAnimationFrame(() => {
+      this.dragRedrawFrameId = null;
+      this.emitLiveDraggedDates();
+      this.drawCustomDependencies(++this.redrawSequence, null);
+    });
+  };
+
+  private readonly handleDocumentPointerUp = (): void => {
+    if (!this.isDateDragActive) {
+      return;
+    }
+
+    this.isDateDragActive = false;
+    this.lastDragEmission.clear();
+    if (this.dragRedrawFrameId !== null) {
+      cancelAnimationFrame(this.dragRedrawFrameId);
+      this.dragRedrawFrameId = null;
+    }
+    this.scheduleDependencyRedraw();
+    this.debugLog('liveDrag:end', {
+      activeLoaderToken: this.activeLoaderToken,
+    });
+  };
+
+  private emitLiveDraggedDates(): void {
+    if (!this.gantt?.bars?.length) {
+      return;
+    }
+
+    for (const bar of this.gantt.bars as Array<{
+      task: FrappeTask;
+      $bar: SVGGraphicsElement & {
+        finaldx?: number;
+        getWidth?: () => number;
+      };
+      compute_start_end_date?: () => { new_start_date: Date; new_end_date: Date };
+    }>) {
+      const finalDx = Number(bar.$bar?.finaldx ?? 0);
+      if (!finalDx || typeof bar.compute_start_end_date !== 'function') {
+        continue;
+      }
+
+      const { new_start_date, new_end_date } = bar.compute_start_end_date();
+      const signature = `${new_start_date.getTime()}:${new_end_date.getTime()}`;
+      if (this.lastDragEmission.get(bar.task.id) === signature) {
+        continue;
+      }
+
+      this.lastDragEmission.set(bar.task.id, signature);
+      this.dateChanged.emit({
+        task: bar.task,
+        start: new_start_date,
+        end: new Date(new_end_date.getTime() - 1000),
+      });
+    }
+  }
+
+  private drawCustomDependencies(sequence: number, loaderToken: number | null): void {
     const svg = this.container.nativeElement.querySelector('svg.gantt') as SVGSVGElement | null;
     if (!svg) {
+      this.debugLog('drawCustomDependencies:no-svg', {
+        sequence,
+        loaderToken,
+        activeLoaderToken: this.activeLoaderToken,
+      });
+      this.completeLoaderIfActive(loaderToken);
       return;
     }
 
@@ -252,7 +449,12 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
 
     const layer = document.createElementNS(this.svgNs, 'g');
     layer.setAttribute('class', 'custom-dependencies');
-    svg.appendChild(layer);
+    const firstBarGroup = svg.querySelector('.bar-wrapper')?.parentNode;
+    if (firstBarGroup) {
+      svg.insertBefore(layer, firstBarGroup);
+    } else {
+      svg.appendChild(layer);
+    }
 
     for (const task of this.tasks) {
       for (const dependency of task.dependencyItems ?? []) {
@@ -270,6 +472,14 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
         layer.appendChild(path);
       }
     }
+
+    this.debugLog('drawCustomDependencies:done', {
+      sequence,
+      loaderToken,
+      activeLoaderToken: this.activeLoaderToken,
+      dependencies: layer.childElementCount,
+    });
+    this.completeLoaderIfActive(loaderToken);
   }
 
   private scheduleDependencyRedraw(): void {
@@ -280,15 +490,29 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       cancelAnimationFrame(this.dependencyRedrawFrameId);
     }
 
-    this.waitForStableBars();
+    const sequence = ++this.redrawSequence;
+    const loaderToken = this.activeLoaderToken;
+    this.debugLog('scheduleDependencyRedraw:start', {
+      sequence,
+      loaderToken,
+      activeLoaderToken: this.activeLoaderToken,
+    });
+    this.waitForStableBars(sequence, loaderToken);
 
     this.dependencyRedrawTimeoutId = setTimeout(() => {
       this.dependencyRedrawTimeoutId = null;
-      this.drawCustomDependencies();
+      this.debugLog('scheduleDependencyRedraw:timeout-fire', {
+        sequence,
+        loaderToken,
+        activeLoaderToken: this.activeLoaderToken,
+      });
+      this.drawCustomDependencies(sequence, loaderToken);
     }, 320);
   }
 
   private waitForStableBars(
+    sequence: number,
+    loaderToken: number | null,
     previousSnapshot: string | null = null,
     stableFrames = 0,
     remainingFrames = 18,
@@ -298,18 +522,91 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
 
       if (!snapshot) {
         this.dependencyRedrawFrameId = null;
+        this.debugLog('waitForStableBars:no-snapshot', {
+          sequence,
+          loaderToken,
+          activeLoaderToken: this.activeLoaderToken,
+        });
+        this.completeLoaderIfActive(loaderToken);
         return;
       }
 
       const nextStableFrames = snapshot === previousSnapshot ? stableFrames + 1 : 0;
       if (nextStableFrames >= 2 || remainingFrames <= 0) {
         this.dependencyRedrawFrameId = null;
-        this.drawCustomDependencies();
+        this.debugLog('waitForStableBars:stable', {
+          sequence,
+          loaderToken,
+          activeLoaderToken: this.activeLoaderToken,
+          stableFrames: nextStableFrames,
+          remainingFrames,
+        });
+        this.drawCustomDependencies(sequence, loaderToken);
         return;
       }
 
-      this.waitForStableBars(snapshot, nextStableFrames, remainingFrames - 1);
+      this.debugLog('waitForStableBars:retry', {
+        sequence,
+        loaderToken,
+        activeLoaderToken: this.activeLoaderToken,
+        stableFrames: nextStableFrames,
+        remainingFrames,
+      });
+      this.waitForStableBars(sequence, loaderToken, snapshot, nextStableFrames, remainingFrames - 1);
     });
+  }
+
+  private completeLoaderIfActive(loaderToken: number | null): void {
+    this.debugLog('completeLoaderIfActive:attempt', {
+      loaderToken,
+      activeLoaderToken: this.activeLoaderToken,
+      isRendering: this.isRendering(),
+    });
+    if (loaderToken === null || loaderToken !== this.activeLoaderToken) {
+      this.debugLog('completeLoaderIfActive:ignored', {
+        loaderToken,
+        activeLoaderToken: this.activeLoaderToken,
+      });
+      return;
+    }
+
+    if (this.loaderTimeoutId !== null) {
+      clearTimeout(this.loaderTimeoutId);
+      this.loaderTimeoutId = null;
+    }
+    this.isRendering.set(false);
+    this.activeLoaderToken = null;
+    this.debugLog('completeLoaderIfActive:completed', {
+      loaderToken,
+      isRendering: this.isRendering(),
+    });
+  }
+
+  private armLoaderFallback(loaderToken: number): void {
+    if (this.loaderTimeoutId !== null) {
+      clearTimeout(this.loaderTimeoutId);
+    }
+
+    this.debugLog('armLoaderFallback:start', {
+      loaderToken,
+      activeLoaderToken: this.activeLoaderToken,
+    });
+    this.loaderTimeoutId = setTimeout(() => {
+      this.loaderTimeoutId = null;
+      this.debugLog('armLoaderFallback:timeout-fire', {
+        loaderToken,
+        activeLoaderToken: this.activeLoaderToken,
+      });
+      this.completeLoaderIfActive(loaderToken);
+    }, 1200);
+  }
+
+  private debugLog(event: string, payload: Record<string, unknown>): void {
+    if (!this.debugLoggingEnabled) {
+      return;
+    }
+
+    console.debug('[GanttWrapper]', event, payload);
   }
 
   private captureBarGeometrySnapshot(): string | null {
@@ -329,6 +626,29 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
         return [box.x, box.y, box.width, box.height].map((value) => Math.round(value)).join(':');
       })
       .join('|');
+  }
+
+
+  private freezeSvgAnimations(): void {
+    const svg = this.container.nativeElement.querySelector('svg.gantt') as SVGSVGElement | null;
+    if (!svg) {
+      return;
+    }
+
+    const animations = Array.from(svg.querySelectorAll('animate'));
+    if (!animations.length) {
+      return;
+    }
+
+    for (const animation of animations) {
+      animation.remove();
+    }
+
+    this.debugLog('freezeSvgAnimations:removed', {
+      count: animations.length,
+      loaderToken: this.activeLoaderToken,
+      viewMode: this.currentViewMode,
+    });
   }
 
   private getDesiredColumnWidth(): number | null {
@@ -353,22 +673,6 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
         return 120;
       default:
         return 45;
-    }
-  }
-
-  private attachCustomDependencyHooks(): void {
-    if (!this.gantt) {
-      return;
-    }
-
-    const originalRender = this.gantt.render?.bind(this.gantt);
-    if (originalRender && !this.gantt.__customDependencyRenderPatched) {
-      this.gantt.render = (...args: unknown[]) => {
-        const result = originalRender(...args);
-        this.scheduleDependencyRedraw();
-        return result;
-      };
-      this.gantt.__customDependencyRenderPatched = true;
     }
   }
 

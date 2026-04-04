@@ -42,7 +42,7 @@ export class TaskEditPanel implements OnChanges {
   readonly dependencyTypes: DependencyType[] = ['FinishToStart', 'StartToStart', 'FinishToFinish'];
 
   form = this.fb.group({
-    title: ['', Validators.required],
+    title: ['', [Validators.required, Validators.maxLength(50)]],
     startDate: [null as Date | null, Validators.required],
     endDate: [null as Date | null, Validators.required],
     progress: [0, [Validators.required, Validators.min(0), Validators.max(100)]],

@@ -34,6 +34,37 @@
   max-height: 100%;
 }
 
+.gantt-container.is-rendering {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.gantt-loading {
+  position: absolute;
+  inset: var(--gantt-shell-padding);
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(26, 29, 39, 0.94) 0%, rgba(33, 38, 58, 0.92) 100%);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  z-index: 2;
+}
+
+.gantt-loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(139, 145, 167, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: gantt-spin 0.8s linear infinite;
+}
+
 .gantt-popup-host {
   position: fixed;
   inset: 0;
@@ -67,6 +98,9 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :host ::ng-deep .gantt-popup-host .popup-wrapper .subtitle {
@@ -75,12 +109,18 @@
   font-size: 0.9375rem;
   font-weight: 600;
   line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :host ::ng-deep .gantt-popup-host .popup-wrapper .details {
   color: var(--text-muted);
   font-size: 0.875rem;
   line-height: 1.5;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :host ::ng-deep .gantt-popup-host .popup-wrapper .actions {
@@ -238,6 +278,12 @@
 
 :host ::ng-deep .gantt .handle.progress {
   fill: rgba(232, 234, 240, 0.72);
+}
+
+@keyframes gantt-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 640px) {
