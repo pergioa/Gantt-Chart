@@ -50,6 +50,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   private loaderTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private readonly svgNs = 'http://www.w3.org/2000/svg';
   private pendingScrollLeft: number | null = null;
+  private recenterToTodayOnNextRender = false;
   private redrawSequence = 0;
   private activeLoaderToken: number | null = null;
   private nextLoaderToken = 0;
@@ -113,6 +114,40 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     }
   }
 
+  recenterToToday(): void {
+    this.recenterToTodayOnNextRender = true;
+    this.pendingScrollLeft = null;
+    this.debugLog('recenterToToday:requested', {
+      pendingScrollLeft: this.pendingScrollLeft,
+      recenterToTodayOnNextRender: this.recenterToTodayOnNextRender,
+    });
+  }
+
+  renderCenteredToToday(): void {
+    this.recenterToToday();
+    this.debugLog('renderCenteredToToday:start', {
+      viewInitialized: this.viewInitialized,
+      hasGantt: Boolean(this.gantt),
+    });
+    if (!this.viewInitialized) {
+      return;
+    }
+
+    this.renderGantt();
+  }
+
+  scrollToTodayNow(): void {
+    this.pendingScrollLeft = null;
+    const beforeScrollLeft = this.getCurrentScrollLeft();
+    this.scrollTodayIntoView();
+    requestAnimationFrame(() => {
+      this.debugLog('scrollToTodayNow:after-scroll', {
+        beforeScrollLeft,
+        afterScrollLeft: this.getCurrentScrollLeft(),
+      });
+    });
+  }
+
   private attachPopupToOverlay(): void {
     if (!this.gantt?.$popup_wrapper) {
       return;
@@ -151,7 +186,10 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   private renderGantt(): void {
     const container = this.container.nativeElement as HTMLDivElement;
     const existingScrollHost = container.querySelector('.gantt-container') as HTMLDivElement | null;
-    this.pendingScrollLeft = existingScrollHost?.scrollLeft ?? null;
+    const existingScrollLeft = existingScrollHost?.scrollLeft ?? null;
+    this.pendingScrollLeft = this.recenterToTodayOnNextRender
+      ? null
+      : existingScrollLeft;
     this.detachLiveDragTracking();
     container.innerHTML = '';
     this.clearPopupHost();
@@ -159,6 +197,9 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       tasks: this.tasks.length,
       viewMode: this.currentViewMode,
       loaderToken: this.activeLoaderToken,
+      existingScrollLeft,
+      pendingScrollLeft: this.pendingScrollLeft,
+      recenterToTodayOnNextRender: this.recenterToTodayOnNextRender,
     });
 
     if (!this.tasks.length) {
@@ -343,12 +384,82 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     if (this.pendingScrollLeft !== null) {
+      this.debugLog('restoreScrollPosition:preserve', {
+        pendingScrollLeft: this.pendingScrollLeft,
+        beforeScrollLeft: scrollHost.scrollLeft,
+      });
       scrollHost.scrollLeft = this.pendingScrollLeft;
       this.pendingScrollLeft = null;
+      this.recenterToTodayOnNextRender = false;
+      this.debugLog('restoreScrollPosition:preserve-applied', {
+        afterScrollLeft: scrollHost.scrollLeft,
+      });
       return;
     }
 
-    this.gantt.scroll_current?.();
+    const beforeScrollLeft = scrollHost.scrollLeft;
+    this.debugLog('restoreScrollPosition:scroll-current', {
+      beforeScrollLeft,
+      recenterToTodayOnNextRender: this.recenterToTodayOnNextRender,
+    });
+    this.scrollTodayIntoView();
+    this.recenterToTodayOnNextRender = false;
+    requestAnimationFrame(() => {
+      this.debugLog('restoreScrollPosition:scroll-current-applied', {
+        beforeScrollLeft,
+        afterScrollLeft: this.getCurrentScrollLeft(),
+      });
+    });
+  }
+
+  private getCurrentScrollLeft(): number | null {
+    const scrollHost = this.container?.nativeElement?.querySelector?.('.gantt-container') as
+      | HTMLDivElement
+      | null;
+    return scrollHost?.scrollLeft ?? null;
+  }
+
+  private scrollTodayIntoView(): void {
+    const scrollHost = this.container?.nativeElement?.querySelector?.('.gantt-container') as
+      | HTMLDivElement
+      | null;
+    if (!scrollHost) {
+      return;
+    }
+
+    const todayKey = this.formatDateKey(new Date());
+    const todayCell = this.container.nativeElement.querySelector(
+      `.lower-text.date_${todayKey}`,
+    ) as HTMLElement | null;
+
+    if (!todayCell) {
+      this.debugLog('scrollTodayIntoView:no-today-cell', {
+        todayKey,
+      });
+      this.gantt?.scroll_current?.();
+      return;
+    }
+
+    const targetLeft = Math.max(
+      0,
+      todayCell.offsetLeft - scrollHost.clientWidth / 2 + todayCell.clientWidth / 2,
+    );
+    this.debugLog('scrollTodayIntoView:target', {
+      todayKey,
+      currentScrollLeft: scrollHost.scrollLeft,
+      targetLeft,
+      todayOffsetLeft: todayCell.offsetLeft,
+      todayWidth: todayCell.clientWidth,
+      containerWidth: scrollHost.clientWidth,
+    });
+    scrollHost.scrollLeft = targetLeft;
+  }
+
+  private formatDateKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private readonly handleSvgPointerDown = (event: MouseEvent): void => {
@@ -416,6 +527,8 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
           } else if (this.pendingDragDateChanges.size) {
             this.dateChanged.emit(Array.from(this.pendingDragDateChanges.values()));
           }
+
+          this.emitActiveDraggedTaskSelection();
         }
 
         this.isDateDragActive = false;
@@ -495,6 +608,20 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
 
   private normalizeDateChange(task: FrappeTask, start: Date, end: Date): GanttDateChangeEvent {
     return { task, start, end };
+  }
+
+  private emitActiveDraggedTaskSelection(): void {
+    if (!this.activeDragTaskId) {
+      return;
+    }
+
+    const activeTask = this.tasks.find((task) => task.id === this.activeDragTaskId);
+    if (!activeTask) {
+      return;
+    }
+
+    this.hidePopup();
+    this.taskClicked.emit(activeTask);
   }
 
   private getDraggedTaskIds(): string[] {

@@ -156,8 +156,8 @@ export class TaskForm implements OnInit {
         continue;
       }
 
-      const predecessorStart = new Date(predecessor.startDate);
-      const predecessorEnd = new Date(predecessor.endDate);
+      const predecessorStart = this.parseDate(predecessor.startDate);
+      const predecessorEnd = this.parseDate(predecessor.endDate);
 
       if (type === 'FinishToStart') {
         suggestedStart = this.maxDate(suggestedStart, this.addDays(predecessorEnd, 1));
@@ -206,6 +206,11 @@ export class TaskForm implements OnInit {
     return next;
   }
 
+  private parseDate(value: string): Date {
+    const [year, month, day] = value.split('T')[0].split('-').map((part) => Number(part));
+    return new Date(year, month - 1, day);
+  }
+
   private validateSchedule(control: AbstractControl): ValidationErrors | null {
     const startDate = control.get('startDate')?.value as Date | null;
     const endDate = control.get('endDate')?.value as Date | null;
@@ -228,8 +233,8 @@ export class TaskForm implements OnInit {
         continue;
       }
 
-      const predecessorStart = new Date(predecessor.startDate);
-      const predecessorEnd = new Date(predecessor.endDate);
+      const predecessorStart = this.parseDate(predecessor.startDate);
+      const predecessorEnd = this.parseDate(predecessor.endDate);
       const predecessorLabel = `"${predecessor.title}"`;
 
       if (type === 'FinishToStart' && startDate.getTime() <= predecessorEnd.getTime()) {

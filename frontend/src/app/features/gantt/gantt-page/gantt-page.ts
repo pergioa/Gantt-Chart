@@ -41,6 +41,7 @@ export class GanttPage implements OnInit, OnDestroy {
   private persistedTaskMap = new Map<string, Task>();
   private pendingChanges = new Map<string, BatchTaskPayload>();
   private destroy$ = new Subject<void>();
+  private readonly debugLoggingEnabled = true;
 
   ngOnInit(): void {
     this.projectId = this.route.snapshot.paramMap.get('id')!;
@@ -102,17 +103,34 @@ export class GanttPage implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     const payload = { tasks: Array.from(this.pendingChanges.values()) };
+    this.debugLog('onPanelSaved:batchUpdate:start', {
+      changedTaskId: event.id,
+      pendingTasks: payload.tasks.map((task) => task.id),
+    });
     this.taskService.batchUpdate(this.projectId, payload)
       .pipe(takeUntil(this.destroy$))
       .subscribe((updatedTasks) => {
+        this.debugLog('onPanelSaved:batchUpdate:success', {
+          updatedTaskIds: updatedTasks.map((task) => task.id),
+          selectedTaskId: this.selectedTask?.id ?? null,
+        });
         for (const task of updatedTasks) {
           this.persistedTaskMap.set(task.id, this.cloneTask(task));
         }
         this.taskMap = this.cloneTaskMap(this.persistedTaskMap);
         this.pendingChanges.clear();
+        this.ganttWrapper?.recenterToToday();
         this.refreshChartTasks();
         this.selectedTask = null;
         this.cdr.detectChanges();
+        queueMicrotask(() => {
+          requestAnimationFrame(() => {
+            this.debugLog('onPanelSaved:scrollToTodayNow', {
+              hasWrapper: Boolean(this.ganttWrapper),
+            });
+            this.ganttWrapper?.scrollToTodayNow();
+          });
+        });
       });
   }
 
@@ -323,8 +341,8 @@ export class GanttPage implements OnInit, OnDestroy {
 
     return {
       ...task,
-      startDate: nextStart.toISOString(),
-      endDate: nextEnd.toISOString(),
+      startDate: this.formatDate(nextStart),
+      endDate: this.formatDate(nextEnd),
     };
   }
 
@@ -356,6 +374,14 @@ export class GanttPage implements OnInit, OnDestroy {
     };
   }
 
+  private debugLog(event: string, payload: Record<string, unknown>): void {
+    if (!this.debugLoggingEnabled) {
+      return;
+    }
+
+    console.debug('[GanttPage]', event, payload);
+  }
+
   private syncSelectedTask(): void {
     if (!this.selectedTask) {
       return;
@@ -365,9 +391,12 @@ export class GanttPage implements OnInit, OnDestroy {
   }
 
   private parseTaskDate(value: string): Date {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return date;
+    if (value.includes('T')) {
+      return this.parseTaskDate(value.split('T')[0]);
+    }
+
+    const [year, month, day] = value.split('-').map((part) => Number(part));
+    return new Date(year, month - 1, day);
   }
 
   private getInclusiveDurationDays(start: string, end: string): number {
@@ -380,6 +409,13 @@ export class GanttPage implements OnInit, OnDestroy {
     const next = new Date(date);
     next.setDate(next.getDate() + days);
     return next;
+  }
+
+  private formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private maxDate(left: Date, right: Date): Date {

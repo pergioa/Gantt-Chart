@@ -61,8 +61,8 @@ export class TaskEditPanel implements OnChanges {
     if (changes['task'] && this.task) {
       this.form.patchValue({
         title: this.task.title,
-        startDate: new Date(this.task.startDate),
-        endDate: new Date(this.task.endDate),
+        startDate: this.parseDate(this.task.startDate),
+        endDate: this.parseDate(this.task.endDate),
         progress: this.task.progress,
       });
       this.selectedDependencies = new Map(
@@ -178,6 +178,11 @@ export class TaskEditPanel implements OnChanges {
     return `${year}-${month}-${day}`;
   }
 
+  private parseDate(value: string): Date {
+    const [year, month, day] = value.split('T')[0].split('-').map((part) => Number(part));
+    return new Date(year, month - 1, day);
+  }
+
   private refreshValidation(): void {
     this.form.updateValueAndValidity({ emitEvent: false });
   }
@@ -203,8 +208,8 @@ export class TaskEditPanel implements OnChanges {
         continue;
       }
 
-      const predecessorStart = new Date(predecessor.startDate);
-      const predecessorEnd = new Date(predecessor.endDate);
+      const predecessorStart = this.parseDate(predecessor.startDate);
+      const predecessorEnd = this.parseDate(predecessor.endDate);
       const predecessorLabel = `"${predecessor.title}"`;
 
       if (type === 'FinishToStart' && startDate.getTime() <= predecessorEnd.getTime()) {
