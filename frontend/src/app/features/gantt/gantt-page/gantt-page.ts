@@ -220,6 +220,13 @@ export class GanttPage implements OnInit, OnDestroy {
         ...drag,
       };
 
+      if (
+        updatedTask.startDate === existing.startDate
+        && updatedTask.endDate === existing.endDate
+      ) {
+        continue;
+      }
+
       this.taskMap.set(updatedTask.id, updatedTask);
       changedTaskIds.add(updatedTask.id);
 
@@ -267,6 +274,12 @@ export class GanttPage implements OnInit, OnDestroy {
           continue;
         }
 
+        this.debugLog('propagateSuccessorSchedules:final-propagated', {
+          taskId: propagated.id,
+          startDate: propagated.startDate,
+          endDate: propagated.endDate,
+          triggeredBy: currentId,
+        });
         this.taskMap.set(propagated.id, propagated);
         if (persist) {
           this.pendingChanges.set(propagated.id, this.toBatchPayload(propagated));

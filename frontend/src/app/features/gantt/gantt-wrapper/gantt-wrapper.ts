@@ -57,6 +57,10 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   private isDateDragActive = false;
   private hasActiveDragMovement = false;
   private activeDragTaskId: string | null = null;
+  private activeDragMode: 'move' | 'resize-left' | 'resize-right' | null = null;
+  private activeDragSubtreeTaskIds: string[] = [];
+  private activeDragOriginalTaskDates = new Map<string, { start: Date; end: Date }>();
+  private activeDragLiveTaskDates = new Map<string, { start: Date; end: Date }>();
   private lastDragEmission = new Map<string, string>();
   private pendingDragDateChanges = new Map<string, GanttDateChangeEvent>();
   private readonly debugLoggingEnabled = true;
@@ -278,6 +282,10 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     this.isDateDragActive = false;
     this.hasActiveDragMovement = false;
     this.activeDragTaskId = null;
+    this.activeDragMode = null;
+    this.activeDragSubtreeTaskIds = [];
+    this.activeDragOriginalTaskDates.clear();
+    this.activeDragLiveTaskDates.clear();
     this.lastDragEmission.clear();
     this.pendingDragDateChanges.clear();
     if (this.dragRedrawFrameId !== null) {
@@ -419,6 +427,29 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     return scrollHost?.scrollLeft ?? null;
   }
 
+  private parseTaskDate(value: string): Date {
+    const [year, month, day] = value.split('T')[0].split('-').map((part) => Number(part));
+    return new Date(year, month - 1, day);
+  }
+
+  private toLocalDateOnly(value: Date): Date {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  private getInclusiveDurationDays(start: Date, end: Date): number {
+    return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private maxDate(left: Date, right: Date): Date {
+    return left.getTime() >= right.getTime() ? left : right;
+  }
+
   private scrollTodayIntoView(): void {
     const scrollHost = this.container?.nativeElement?.querySelector?.('.gantt-container') as
       | HTMLDivElement
@@ -478,14 +509,27 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
+    const isLeftHandle = target.classList.contains('left');
+    const isRightHandle = target.classList.contains('right');
+
     this.isDateDragActive = true;
     this.hasActiveDragMovement = false;
     this.activeDragTaskId = target.closest('.bar-wrapper')?.getAttribute('data-id') ?? null;
+    this.activeDragMode = isLeftHandle ? 'resize-left' : isRightHandle ? 'resize-right' : 'move';
+    this.activeDragSubtreeTaskIds = this.activeDragTaskId
+      ? this.getSuccessorTaskIds(this.activeDragTaskId)
+      : [];
+    this.activeDragOriginalTaskDates = this.captureOriginalTaskDates(
+      this.activeDragTaskId ? [this.activeDragTaskId, ...this.activeDragSubtreeTaskIds] : [],
+    );
+    this.activeDragLiveTaskDates = new Map(this.activeDragOriginalTaskDates);
     this.lastDragEmission.clear();
     this.pendingDragDateChanges.clear();
     this.hidePopup();
     this.debugLog('liveDrag:start', {
       activeDragTaskId: this.activeDragTaskId,
+      activeDragMode: this.activeDragMode,
+      activeDragSubtreeTaskIds: this.activeDragSubtreeTaskIds,
       activeLoaderToken: this.activeLoaderToken,
     });
   };
@@ -503,6 +547,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
 
     this.dragRedrawFrameId = requestAnimationFrame(() => {
       this.dragRedrawFrameId = null;
+      this.syncDraggedSubtreeBars();
       this.emitLiveDraggedDates();
       this.drawCustomDependencies(++this.redrawSequence, null);
     });
@@ -513,6 +558,8 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
+    const draggedTaskId = this.activeDragTaskId;
+
     if (this.dragRedrawFrameId !== null) {
       cancelAnimationFrame(this.dragRedrawFrameId);
       this.dragRedrawFrameId = null;
@@ -521,19 +568,22 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     queueMicrotask(() => {
       requestAnimationFrame(() => {
         if (this.hasActiveDragMovement || this.pendingDragDateChanges.size) {
-          const updates = this.collectActiveDragDateChanges(true);
+          const updates = this.collectActiveDragDateChangesFromLiveState(true);
           if (updates.length) {
             this.dateChanged.emit(updates);
           } else if (this.pendingDragDateChanges.size) {
             this.dateChanged.emit(Array.from(this.pendingDragDateChanges.values()));
           }
-
-          this.emitActiveDraggedTaskSelection();
         }
+        this.emitActiveDraggedTaskSelection();
 
         this.isDateDragActive = false;
         this.hasActiveDragMovement = false;
         this.activeDragTaskId = null;
+        this.activeDragMode = null;
+        this.activeDragSubtreeTaskIds = [];
+        this.activeDragOriginalTaskDates.clear();
+        this.activeDragLiveTaskDates.clear();
         this.lastDragEmission.clear();
         this.pendingDragDateChanges.clear();
         this.scheduleDependencyRedraw();
@@ -546,7 +596,7 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   };
 
   private emitLiveDraggedDates(): void {
-    const updates = this.collectActiveDragDateChanges();
+    const updates = this.collectActiveDragDateChangesFromLiveState(false);
     if (updates.length) {
       this.dateDragging.emit(updates);
     }
@@ -610,12 +660,363 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     return { task, start, end };
   }
 
+  private syncDraggedSubtreeBars(): void {
+    if (!this.activeDragTaskId || !this.activeDragSubtreeTaskIds.length || !this.gantt?.get_bar) {
+      return;
+    }
+
+    const activeBar = this.gantt.get_bar(this.activeDragTaskId) as
+      | {
+          $bar: SVGGraphicsElement & {
+            finaldx?: number;
+            ox?: number;
+            oy?: number;
+            owidth?: number;
+            getX?: () => number;
+            getY?: () => number;
+            getWidth?: () => number;
+          };
+          compute_start_end_date?: () => { new_start_date: Date; new_end_date: Date };
+        }
+      | undefined;
+    if (!activeBar || typeof activeBar.compute_start_end_date !== 'function') {
+      return;
+    }
+
+    const { new_start_date, new_end_date } = activeBar.compute_start_end_date();
+    const liveTaskDates = new Map(this.activeDragOriginalTaskDates);
+    liveTaskDates.set(this.activeDragTaskId, {
+      start: this.toLocalDateOnly(new_start_date),
+      end: this.toLocalDateOnly(new Date(new_end_date.getTime() - 1000)),
+    });
+    const subtreeTaskIds = this.getLivePropagationOrder(this.activeDragSubtreeTaskIds);
+    const maxPasses = Math.max(1, subtreeTaskIds.length);
+
+    for (let pass = 0; pass < maxPasses; pass += 1) {
+      let changedInPass = false;
+
+      for (const taskId of subtreeTaskIds) {
+        const task = this.tasks.find((entry) => entry.id === taskId);
+        const originalDates = this.activeDragOriginalTaskDates.get(taskId);
+        if (!task || !originalDates) {
+          continue;
+        }
+
+        const nextDates =
+          this.calculateLivePropagatedDates(taskId, task, liveTaskDates, originalDates)
+          ?? originalDates;
+
+        const previousDates = liveTaskDates.get(taskId);
+        const datesChanged = !previousDates
+          || previousDates.start.getTime() !== nextDates.start.getTime()
+          || previousDates.end.getTime() !== nextDates.end.getTime();
+
+        if (!datesChanged && pass > 0) {
+          continue;
+        }
+
+        changedInPass = changedInPass || datesChanged;
+        this.debugLog('syncDraggedSubtreeBars:live-propagated', {
+          taskId,
+          mode: this.activeDragMode,
+          pass,
+          start: this.formatDateKey(nextDates.start),
+          end: this.formatDateKey(nextDates.end),
+        });
+        liveTaskDates.set(taskId, nextDates);
+        this.updateBarToDates(taskId, nextDates.start, nextDates.end);
+      }
+
+      if (!changedInPass) {
+        break;
+      }
+    }
+
+    this.activeDragLiveTaskDates = liveTaskDates;
+  }
+
+  private collectActiveDragDateChangesFromLiveState(
+    includePreviouslyEmitted: boolean,
+  ): GanttDateChangeEvent[] {
+    if (!this.activeDragTaskId || !this.activeDragLiveTaskDates.size) {
+      return [];
+    }
+
+    const taskIds = [this.activeDragTaskId, ...this.activeDragSubtreeTaskIds];
+    const updates: GanttDateChangeEvent[] = [];
+
+    for (const taskId of Array.from(new Set(taskIds))) {
+      const task = this.tasks.find((entry) => entry.id === taskId);
+      const dates = this.activeDragLiveTaskDates.get(taskId);
+      if (!task || !dates) {
+        continue;
+      }
+
+      const signature = `${dates.start.getTime()}:${dates.end.getTime()}`;
+      if (!includePreviouslyEmitted && this.lastDragEmission.get(taskId) === signature) {
+        continue;
+      }
+
+      this.lastDragEmission.set(taskId, signature);
+      updates.push(this.normalizeDateChange(task, dates.start, dates.end));
+    }
+
+    return updates;
+  }
+
+  private getLivePropagationOrder(taskIds: string[]): string[] {
+    const remaining = new Set(taskIds);
+    const ordered: string[] = [];
+
+    while (remaining.size) {
+      let progressed = false;
+
+      for (const taskId of Array.from(remaining)) {
+        const task = this.tasks.find((entry) => entry.id === taskId);
+        const unresolvedInternalDependency = (task?.dependencyItems ?? []).some(
+          (dependency) => remaining.has(dependency.predecessorId),
+        );
+
+        if (unresolvedInternalDependency) {
+          continue;
+        }
+
+        ordered.push(taskId);
+        remaining.delete(taskId);
+        progressed = true;
+      }
+
+      if (!progressed) {
+        ordered.push(...remaining);
+        break;
+      }
+    }
+
+    return ordered;
+  }
+
+  private calculateLivePropagatedDates(
+    taskId: string,
+    task: FrappeTask,
+    liveTaskDates: Map<string, { start: Date; end: Date }>,
+    originalDates: { start: Date; end: Date },
+  ): { start: Date; end: Date } | null {
+    const shiftedOriginalDates = this.getShiftedOriginalDates(task, originalDates, liveTaskDates);
+    let minStart = shiftedOriginalDates.start;
+    let minEnd = shiftedOriginalDates.end;
+
+    for (const dependency of task.dependencyItems ?? []) {
+      const predecessorDates = this.getLiveConstraintDates(dependency.predecessorId, liveTaskDates);
+      if (!predecessorDates) {
+        continue;
+      }
+
+      if (dependency.type === 'FinishToStart') {
+        minStart = this.maxDate(minStart, this.addDays(predecessorDates.end, 1));
+      }
+
+      if (dependency.type === 'StartToStart') {
+        minStart = this.maxDate(minStart, predecessorDates.start);
+      }
+
+      if (dependency.type === 'FinishToFinish') {
+        minEnd = this.maxDate(minEnd, predecessorDates.end);
+      }
+    }
+
+    const durationDays = this.getInclusiveDurationDays(originalDates.start, originalDates.end);
+    let nextStart = minStart;
+    let nextEnd = this.addDays(nextStart, Math.max(durationDays - 1, 0));
+    if (nextEnd.getTime() < minEnd.getTime()) {
+      nextEnd = minEnd;
+      nextStart = this.addDays(nextEnd, -Math.max(durationDays - 1, 0));
+    }
+
+    const currentDates = liveTaskDates.get(taskId);
+    if (
+      currentDates
+      && currentDates.start.getTime() === nextStart.getTime()
+      && currentDates.end.getTime() === nextEnd.getTime()
+    ) {
+      return null;
+    }
+
+    return { start: nextStart, end: nextEnd };
+  }
+
+  private getShiftedOriginalDates(
+    task: FrappeTask,
+    originalDates: { start: Date; end: Date },
+    liveTaskDates: Map<string, { start: Date; end: Date }>,
+  ): { start: Date; end: Date } {
+    const shiftDays = this.getWholeTaskShiftDays(task, liveTaskDates);
+    if (!shiftDays) {
+      return originalDates;
+    }
+
+    return {
+      start: this.addDays(originalDates.start, shiftDays),
+      end: this.addDays(originalDates.end, shiftDays),
+    };
+  }
+
+  private getWholeTaskShiftDays(
+    task: FrappeTask,
+    liveTaskDates: Map<string, { start: Date; end: Date }>,
+  ): number {
+    const shiftCandidates: number[] = [];
+
+    for (const dependency of task.dependencyItems ?? []) {
+      const shiftDays = this.getDependencyShiftDays(dependency.predecessorId, dependency.type, liveTaskDates);
+      if (shiftDays === null) {
+        continue;
+      }
+
+      shiftCandidates.push(shiftDays);
+    }
+
+    return shiftCandidates.length ? Math.max(...shiftCandidates) : 0;
+  }
+
+  private getDependencyShiftDays(
+    predecessorId: string,
+    dependencyType: TaskDependencyItem['type'],
+    liveTaskDates: Map<string, { start: Date; end: Date }>,
+  ): number | null {
+    const predecessorLiveDates = this.getLiveConstraintDates(predecessorId, liveTaskDates);
+    const predecessorOriginalDates = this.getOriginalConstraintDates(predecessorId);
+    if (!predecessorLiveDates || !predecessorOriginalDates) {
+      return null;
+    }
+
+    const liveAnchor = dependencyType === 'StartToStart'
+      ? predecessorLiveDates.start
+      : predecessorLiveDates.end;
+    const originalAnchor = dependencyType === 'StartToStart'
+      ? predecessorOriginalDates.start
+      : predecessorOriginalDates.end;
+
+    return Math.round((liveAnchor.getTime() - originalAnchor.getTime()) / 86_400_000);
+  }
+
+  private getOriginalConstraintDates(taskId: string): { start: Date; end: Date } | null {
+    const originalDates = this.activeDragOriginalTaskDates.get(taskId);
+    if (originalDates) {
+      return originalDates;
+    }
+
+    const task = this.tasks.find((entry) => entry.id === taskId);
+    if (!task) {
+      return null;
+    }
+
+    return {
+      start: this.parseTaskDate(task.start),
+      end: this.parseTaskDate(task.end),
+    };
+  }
+
+  private getLiveConstraintDates(
+    taskId: string,
+    liveTaskDates: Map<string, { start: Date; end: Date }>,
+  ): { start: Date; end: Date } | null {
+    const liveDates = liveTaskDates.get(taskId);
+    if (liveDates) {
+      return liveDates;
+    }
+
+    const task = this.tasks.find((entry) => entry.id === taskId);
+    if (!task) {
+      return null;
+    }
+
+    return {
+      start: this.parseTaskDate(task.start),
+      end: this.parseTaskDate(task.end),
+    };
+  }
+
+  private updateBarToDates(taskId: string, start: Date, end: Date): void {
+    const bar = this.gantt.get_bar(taskId) as
+      | {
+          task: FrappeTask & { _start?: Date; _end?: Date };
+          x?: number;
+          duration?: number;
+          gantt?: { config?: { column_width?: number } };
+          compute_x?: () => void;
+          compute_duration?: () => void;
+          update_bar_position?: (input: { x?: number | null; width?: number | null }) => void;
+          $bar: SVGGraphicsElement & {
+            finaldx?: number;
+            ox?: number;
+            owidth?: number;
+            getWidth?: () => number;
+          };
+        }
+      | undefined;
+    if (
+      !bar?.$bar
+      || typeof bar.compute_x !== 'function'
+      || typeof bar.compute_duration !== 'function'
+      || typeof bar.update_bar_position !== 'function'
+    ) {
+      return;
+    }
+
+    const desiredStart = new Date(start);
+    const desiredExclusiveEnd = this.addDays(end, 1);
+    bar.task._start = desiredStart;
+    bar.task._end = desiredExclusiveEnd;
+    bar.compute_x();
+    bar.compute_duration();
+    const columnWidth = bar.gantt?.config?.column_width ?? 0;
+    const computedWidth = columnWidth > 0 && typeof bar.duration === 'number'
+      ? columnWidth * bar.duration
+      : (bar.$bar.owidth ?? bar.$bar.getWidth?.() ?? null);
+    this.debugLog('updateBarToDates:apply', {
+      taskId,
+      start: this.formatDateKey(start),
+      end: this.formatDateKey(end),
+      x: bar.x ?? null,
+      width: computedWidth,
+      columnWidth,
+      duration: typeof bar.duration === 'number' ? bar.duration : null,
+    });
+    bar.$bar.finaldx = 0;
+    bar.update_bar_position({
+      x: bar.x ?? null,
+      width: computedWidth,
+    });
+  }
+
+  private captureOriginalTaskDates(taskIds: string[]): Map<string, { start: Date; end: Date }> {
+    const result = new Map<string, { start: Date; end: Date }>();
+
+    for (const taskId of taskIds) {
+      const task = this.tasks.find((entry) => entry.id === taskId);
+      if (!task) {
+        continue;
+      }
+
+      result.set(taskId, {
+        start: this.parseTaskDate(task.start),
+        end: this.parseTaskDate(task.end),
+      });
+    }
+
+    return result;
+  }
+
   private emitActiveDraggedTaskSelection(): void {
     if (!this.activeDragTaskId) {
       return;
     }
 
-    const activeTask = this.tasks.find((task) => task.id === this.activeDragTaskId);
+    this.emitTaskSelectionById(this.activeDragTaskId);
+  }
+
+  private emitTaskSelectionById(taskId: string): void {
+    const activeTask = this.tasks.find((task) => task.id === taskId);
     if (!activeTask) {
       return;
     }
