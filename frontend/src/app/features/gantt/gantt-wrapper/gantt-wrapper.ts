@@ -17,6 +17,8 @@ import { ViewMode } from '../gantt-controls/gantt-controls';
 
 declare const Gantt: any;
 
+type GanttDateChangeEvent = { task: FrappeTask; start: Date; end: Date };
+
 @Component({
   selector: 'app-gantt-wrapper',
   imports: [],
@@ -25,7 +27,8 @@ declare const Gantt: any;
 })
 export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   @Input() tasks: FrappeTask[] = [];
-  @Output() dateChanged = new EventEmitter<{ task: FrappeTask; start: Date; end: Date }>();
+  @Output() dateDragging = new EventEmitter<GanttDateChangeEvent[]>();
+  @Output() dateChanged = new EventEmitter<GanttDateChangeEvent[]>();
   @Output() progressChanged = new EventEmitter<{ task: FrappeTask; progress: number }>();
   @Output() taskClicked = new EventEmitter<FrappeTask>();
   protected readonly isRendering = signal(false);
@@ -51,7 +54,10 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
   private activeLoaderToken: number | null = null;
   private nextLoaderToken = 0;
   private isDateDragActive = false;
+  private hasActiveDragMovement = false;
+  private activeDragTaskId: string | null = null;
   private lastDragEmission = new Map<string, string>();
+  private pendingDragDateChanges = new Map<string, GanttDateChangeEvent>();
   private readonly debugLoggingEnabled = true;
 
   ngAfterViewInit(): void {
@@ -172,8 +178,9 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       column_width: seededColumnWidth,
       popup_on: 'hover',
       scroll_to: 'today',
+      move_dependencies: true,
       on_date_change: (task: FrappeTask, start: Date, end: Date) =>
-        this.dateChanged.emit({ task, start, end }),
+        this.handleGanttDateChange(task, start, end),
       on_progress_change: (task: FrappeTask, progress: number) =>
         this.progressChanged.emit({ task, progress }),
       on_click: (task: FrappeTask) => {
@@ -228,7 +235,10 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     svg?.removeEventListener('mousemove', this.handleSvgPointerMove);
     document.removeEventListener('mouseup', this.handleDocumentPointerUp);
     this.isDateDragActive = false;
+    this.hasActiveDragMovement = false;
+    this.activeDragTaskId = null;
     this.lastDragEmission.clear();
+    this.pendingDragDateChanges.clear();
     if (this.dragRedrawFrameId !== null) {
       cancelAnimationFrame(this.dragRedrawFrameId);
       this.dragRedrawFrameId = null;
@@ -358,9 +368,13 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     this.isDateDragActive = true;
+    this.hasActiveDragMovement = false;
+    this.activeDragTaskId = target.closest('.bar-wrapper')?.getAttribute('data-id') ?? null;
     this.lastDragEmission.clear();
+    this.pendingDragDateChanges.clear();
     this.hidePopup();
     this.debugLog('liveDrag:start', {
+      activeDragTaskId: this.activeDragTaskId,
       activeLoaderToken: this.activeLoaderToken,
     });
   };
@@ -369,6 +383,8 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
     if (!this.isDateDragActive || !this.gantt?.bar_being_dragged) {
       return;
     }
+
+    this.hasActiveDragMovement = true;
 
     if (this.dragRedrawFrameId !== null) {
       return;
@@ -386,49 +402,131 @@ export class GanttWrapper implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
-    this.isDateDragActive = false;
-    this.lastDragEmission.clear();
     if (this.dragRedrawFrameId !== null) {
       cancelAnimationFrame(this.dragRedrawFrameId);
       this.dragRedrawFrameId = null;
     }
-    this.scheduleDependencyRedraw();
+
+    queueMicrotask(() => {
+      requestAnimationFrame(() => {
+        if (this.hasActiveDragMovement || this.pendingDragDateChanges.size) {
+          const updates = this.collectActiveDragDateChanges(true);
+          if (updates.length) {
+            this.dateChanged.emit(updates);
+          } else if (this.pendingDragDateChanges.size) {
+            this.dateChanged.emit(Array.from(this.pendingDragDateChanges.values()));
+          }
+        }
+
+        this.isDateDragActive = false;
+        this.hasActiveDragMovement = false;
+        this.activeDragTaskId = null;
+        this.lastDragEmission.clear();
+        this.pendingDragDateChanges.clear();
+        this.scheduleDependencyRedraw();
+      });
+    });
+
     this.debugLog('liveDrag:end', {
       activeLoaderToken: this.activeLoaderToken,
     });
   };
 
   private emitLiveDraggedDates(): void {
-    if (!this.gantt?.bars?.length) {
+    const updates = this.collectActiveDragDateChanges();
+    if (updates.length) {
+      this.dateDragging.emit(updates);
+    }
+  }
+
+  private handleGanttDateChange(task: FrappeTask, start: Date, end: Date): void {
+    const normalizedChange = this.normalizeDateChange(task, start, end);
+    if (this.isDateDragActive) {
+      this.pendingDragDateChanges.set(task.id, normalizedChange);
       return;
     }
 
-    for (const bar of this.gantt.bars as Array<{
-      task: FrappeTask;
-      $bar: SVGGraphicsElement & {
-        finaldx?: number;
-        getWidth?: () => number;
-      };
-      compute_start_end_date?: () => { new_start_date: Date; new_end_date: Date };
-    }>) {
-      const finalDx = Number(bar.$bar?.finaldx ?? 0);
-      if (!finalDx || typeof bar.compute_start_end_date !== 'function') {
+    this.dateChanged.emit([normalizedChange]);
+  }
+
+  private collectActiveDragDateChanges(includeUnchanged = false): GanttDateChangeEvent[] {
+    if (!this.gantt?.bars?.length) {
+      return [];
+    }
+
+    const taskIds = this.activeDragTaskId
+      ? [this.activeDragTaskId, ...this.getSuccessorTaskIds(this.activeDragTaskId)]
+      : this.getDraggedTaskIds();
+    const updates: GanttDateChangeEvent[] = [];
+
+    for (const taskId of Array.from(new Set(taskIds))) {
+      const bar = this.gantt.get_bar?.(taskId) as
+        | {
+            task: FrappeTask;
+            $bar: SVGGraphicsElement & { finaldx?: number };
+            compute_start_end_date?: () => { new_start_date: Date; new_end_date: Date };
+          }
+        | undefined;
+      if (!bar || typeof bar.compute_start_end_date !== 'function') {
+        continue;
+      }
+
+      if (!includeUnchanged && !Number(bar.$bar?.finaldx ?? 0)) {
         continue;
       }
 
       const { new_start_date, new_end_date } = bar.compute_start_end_date();
-      const signature = `${new_start_date.getTime()}:${new_end_date.getTime()}`;
-      if (this.lastDragEmission.get(bar.task.id) === signature) {
+      const change = this.normalizeDateChange(
+        bar.task,
+        new_start_date,
+        new Date(new_end_date.getTime() - 1000),
+      );
+      const signature = `${change.start.getTime()}:${change.end.getTime()}`;
+      if (!includeUnchanged && this.lastDragEmission.get(bar.task.id) === signature) {
         continue;
       }
 
       this.lastDragEmission.set(bar.task.id, signature);
-      this.dateChanged.emit({
-        task: bar.task,
-        start: new_start_date,
-        end: new Date(new_end_date.getTime() - 1000),
-      });
+      updates.push(change);
     }
+
+    return updates;
+  }
+
+  private normalizeDateChange(task: FrappeTask, start: Date, end: Date): GanttDateChangeEvent {
+    return { task, start, end };
+  }
+
+  private getDraggedTaskIds(): string[] {
+    if (!this.gantt?.bars?.length) {
+      return [];
+    }
+
+    return (this.gantt.bars as Array<{ task: FrappeTask; $bar: SVGGraphicsElement & { finaldx?: number } }>)
+      .filter((bar) => Number(bar.$bar?.finaldx ?? 0))
+      .map((bar) => bar.task.id);
+  }
+
+  private getSuccessorTaskIds(taskId: string): string[] {
+    const visited = new Set<string>();
+    const stack = [taskId];
+
+    while (stack.length) {
+      const currentTaskId = stack.pop()!;
+      for (const task of this.tasks) {
+        const dependsOnCurrent = (task.dependencyItems ?? []).some(
+          (dependency) => dependency.predecessorId === currentTaskId,
+        );
+        if (!dependsOnCurrent || visited.has(task.id) || task.id === taskId) {
+          continue;
+        }
+
+        visited.add(task.id);
+        stack.push(task.id);
+      }
+    }
+
+    return Array.from(visited);
   }
 
   private drawCustomDependencies(sequence: number, loaderToken: number | null): void {

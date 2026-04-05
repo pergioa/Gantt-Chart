@@ -12,8 +12,8 @@ public class CreateTaskDtoValidator : AbstractValidator<CreateTaskDto>
         RuleFor(t => t.StartDate).NotEmpty();
         RuleFor(t => t.EndDate)
             .NotEmpty()
-            .GreaterThan(t => t.StartDate)
-            .WithMessage("EndDate must be greater than StartDate");
+            .GreaterThanOrEqualTo(t => t.StartDate)
+            .WithMessage("EndDate must be greater than or equal to StartDate");
 
         RuleFor(t => t.Progress).InclusiveBetween(0, 100);
     }

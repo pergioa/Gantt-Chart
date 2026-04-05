@@ -39,11 +39,9 @@ public class ProjectTaskService(
         return _mapper.Map<TaskDto>(result!);
     }
 
-    public async Task<IEnumerable<TaskDto>> BatchUpdateAsync(Guid projectId, BatchUpdateDto dto)
+    public Task<IEnumerable<TaskDto>> BatchUpdateAsync(Guid projectId, BatchUpdateDto dto)
     {
-        await _unitOfWork.BeginTransactionAsync();
-
-        try
+        return _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
             var affectedById = new Dictionary<Guid, TaskDto>();
 
@@ -67,14 +65,8 @@ public class ProjectTaskService(
                     affectedById[t.Id] = t;
             }
 
-            await _unitOfWork.CommitAsync();
-            return affectedById.Values;
-        }
-        catch
-        {
-            await _unitOfWork.RollbackAsync();
-            throw;
-        }
+            return (IEnumerable<TaskDto>)affectedById.Values;
+        });
     }
 
     public async Task DeleteAsync(Guid id)

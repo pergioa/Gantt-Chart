@@ -91,7 +91,7 @@ export class TaskForm implements OnInit {
     const messages: string[] = [];
 
     if (errors['dateOrder']) {
-      messages.push('End date must be later than the start date.');
+      messages.push('End date cannot be earlier than the start date.');
     }
 
     const dependencyRules = errors['dependencyRules'] as string[] | undefined;
@@ -216,7 +216,7 @@ export class TaskForm implements OnInit {
 
     const errors: ValidationErrors = {};
 
-    if (startDate.getTime() >= endDate.getTime()) {
+    if (startDate.getTime() > endDate.getTime()) {
       errors['dateOrder'] = true;
     }
 

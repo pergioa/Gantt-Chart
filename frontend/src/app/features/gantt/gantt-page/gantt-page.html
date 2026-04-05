@@ -23,6 +23,7 @@
     } @else {
       <app-gantt-wrapper
         [tasks]="frappeTasks"
+        (dateDragging)="onDateDragging($event)"
         (dateChanged)="onDateChanged($event)"
         (progressChanged)="onProgressChanged($event)"
         (taskClicked)="onTaskClicked($event)"
@@ -34,7 +35,7 @@
 <app-task-edit-panel
   [task]="selectedTask"
   [allTasks]="allTasksList"
-  (closed)="selectedTask = null"
+  (closed)="onPanelClosed()"
   (saved)="onPanelSaved($event)"
   (deleted)="onPanelDeleted($event)"
 />

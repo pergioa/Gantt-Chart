@@ -44,7 +44,12 @@ public class ProjectTaskRepository(AppDbContext context) : IProjectTaskRepositor
 
     public async Task<ProjectTask> UpdateAsync(ProjectTask task)
     {
-        _dbSet.Update(task);
+        var local = _dbSet.Local.FirstOrDefault(e => e.Id == task.Id);
+        if (local is not null)
+            context.Entry(local).CurrentValues.SetValues(task);
+        else
+            _dbSet.Update(task);
+
         await context.SaveChangesAsync();
         return task;
     }

@@ -13,6 +13,31 @@ public class UnitOfWork(AppDbContext context) : IUnitOfWork
         _transaction = await _context.Database.BeginTransactionAsync();
     }
 
+    public Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
+    {
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync<object?, T>(
+            state: null,
+            operation: async (_, _, ct) =>
+            {
+                await using var tx = await _context.Database.BeginTransactionAsync(ct);
+                try
+                {
+                    var result = await operation();
+                    await tx.CommitAsync(ct);
+                    return result;
+                }
+                catch
+                {
+                    await tx.RollbackAsync(ct);
+                    throw;
+                }
+            },
+            verifySucceeded: null,
+            cancellationToken: CancellationToken.None
+        );
+    }
+
     public async Task CommitAsync()
     {
         if (_transaction is null)

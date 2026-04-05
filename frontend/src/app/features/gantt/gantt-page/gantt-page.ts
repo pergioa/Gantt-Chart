@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, debounceTime, switchMap, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { FrappeTask } from '../../../core/models/frappe-task.model';
 import { Task } from '../../../core/models/task.model';
 import { ProjectService } from '../../../core/services/projectService';
@@ -8,7 +8,9 @@ import { BatchTaskPayload, TaskService } from '../../../core/services/taskServic
 import { TaskMapper } from '../../../core/services/task-mapper';
 import { GanttWrapper } from '../gantt-wrapper/gantt-wrapper';
 import { GanttControls, ViewMode } from '../gantt-controls/gantt-controls';
-import { TaskEditPanel } from '../task-edit-panel/task-edit-panel';
+import { TaskEditPanel, TaskEditSaveEvent } from '../task-edit-panel/task-edit-panel';
+
+type GanttDateChangeEvent = { task: FrappeTask; start: Date; end: Date };
 
 @Component({
   selector: 'app-gantt-page',
@@ -36,8 +38,8 @@ export class GanttPage implements OnInit, OnDestroy {
   private pendingInitialViewMode: ViewMode | null = 'Day';
 
   private taskMap = new Map<string, Task>();
+  private persistedTaskMap = new Map<string, Task>();
   private pendingChanges = new Map<string, BatchTaskPayload>();
-  private dragSubject = new Subject<void>();
   private destroy$ = new Subject<void>();
 
   ngOnInit(): void {
@@ -45,74 +47,89 @@ export class GanttPage implements OnInit, OnDestroy {
 
     this.projectService.getTasks(this.projectId).subscribe((tasks) => {
       this.tasksLoaded = true;
-      tasks.forEach((t) => this.taskMap.set(t.id, t));
+      this.persistedTaskMap = this.createTaskMap(tasks);
+      this.taskMap = this.cloneTaskMap(this.persistedTaskMap);
       this.refreshChartTasks();
       this.cdr.detectChanges();
       this.applyInitialViewMode();
     });
-
-    this.dragSubject
-      .pipe(
-        debounceTime(500),
-        switchMap(() => {
-          const payload = { tasks: Array.from(this.pendingChanges.values()) };
-          return this.taskService.batchUpdate(this.projectId, payload);
-        }),
-        takeUntil(this.destroy$),
-      )
-      .subscribe((updatedTasks) => {
-        updatedTasks.forEach((t) => this.taskMap.set(t.id, t));
-        this.refreshChartTasks();
-        this.pendingChanges.clear();
-        this.cdr.detectChanges();
-      });
   }
 
-  onDateChanged(event: { task: FrappeTask; start: Date; end: Date }): void {
-    const existing = this.taskMap.get(event.task.id);
-    if (!existing) return;
+  onDateDragging(events: GanttDateChangeEvent[]): void {
+    this.applyDateChanges(events, false, false);
+  }
 
-    const drag = this.mapper.fromFrappeTask(event.task, event.start, event.end);
-    this.pendingChanges.set(event.task.id, {
-      id: existing.id,
-      title: existing.title,
-      parentId: existing.parentId,
-      order: existing.order,
-      dependencies: existing.dependencies,
-      ...drag,
-    });
-    this.dragSubject.next();
+  onDateChanged(events: GanttDateChangeEvent[]): void {
+    this.applyDateChanges(events, true, true);
   }
 
   onProgressChanged(event: { task: FrappeTask; progress: number }): void {
     const existing = this.taskMap.get(event.task.id);
     if (!existing) return;
 
-    this.pendingChanges.set(event.task.id, {
-      id: existing.id,
-      title: existing.title,
-      parentId: existing.parentId,
-      order: existing.order,
-      dependencies: existing.dependencies,
-      startDate: existing.startDate,
-      endDate: existing.endDate,
+    const updatedTask: Task = {
+      ...existing,
       progress: event.progress,
-    });
-    this.dragSubject.next();
+    };
+
+    this.taskMap.set(updatedTask.id, updatedTask);
+    this.pendingChanges.set(updatedTask.id, this.toBatchPayload(updatedTask));
+    this.refreshChartTasks();
+    this.syncSelectedTask();
+    this.cdr.detectChanges();
   }
 
   onTaskClicked(ft: FrappeTask): void {
     this.selectedTask = this.taskMap.get(ft.id) ?? null;
   }
 
-  onPanelSaved(updated: Task): void {
-    this.taskMap.set(updated.id, updated);
+  onPanelSaved(event: TaskEditSaveEvent): void {
+    const existing = this.taskMap.get(event.id);
+    if (!existing) {
+      return;
+    }
+
+    const updatedTask: Task = {
+      ...existing,
+      ...event.changes,
+    };
+
+    this.taskMap.set(updatedTask.id, updatedTask);
+    this.pendingChanges.set(updatedTask.id, this.toBatchPayload(updatedTask));
+    this.propagateSuccessorSchedules(new Set([updatedTask.id]), true);
     this.refreshChartTasks();
+    this.syncSelectedTask();
+    this.cdr.detectChanges();
+
+    const payload = { tasks: Array.from(this.pendingChanges.values()) };
+    this.taskService.batchUpdate(this.projectId, payload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((updatedTasks) => {
+        for (const task of updatedTasks) {
+          this.persistedTaskMap.set(task.id, this.cloneTask(task));
+        }
+        this.taskMap = this.cloneTaskMap(this.persistedTaskMap);
+        this.pendingChanges.clear();
+        this.refreshChartTasks();
+        this.selectedTask = null;
+        this.cdr.detectChanges();
+      });
+  }
+
+  onPanelClosed(): void {
+    if (this.pendingChanges.size) {
+      this.taskMap = this.cloneTaskMap(this.persistedTaskMap);
+      this.pendingChanges.clear();
+      this.refreshChartTasks();
+    }
+
     this.selectedTask = null;
+    this.cdr.detectChanges();
   }
 
   onPanelDeleted(taskId: string): void {
     this.taskMap.delete(taskId);
+    this.persistedTaskMap.delete(taskId);
     this.pendingChanges.delete(taskId);
 
     // Strip the deleted task from any other task's dependency list in memory
@@ -120,6 +137,10 @@ export class GanttPage implements OnInit, OnDestroy {
       const filtered = task.dependencies.filter((d) => d.predecessorId !== taskId);
       if (filtered.length !== task.dependencies.length) {
         this.taskMap.set(id, { ...task, dependencies: filtered });
+        const persistedTask = this.persistedTaskMap.get(id);
+        if (persistedTask) {
+          this.persistedTaskMap.set(id, { ...persistedTask, dependencies: filtered });
+        }
       }
     }
 
@@ -156,6 +177,217 @@ export class GanttPage implements OnInit, OnDestroy {
 
   private refreshChartTasks(): void {
     this.frappeTasks = this.getOrderedTasks().map((task) => this.mapper.toFrappeTask(task));
+  }
+
+  private applyDateChanges(
+    events: GanttDateChangeEvent[],
+    persist: boolean,
+    refreshChart: boolean,
+  ): void {
+    if (!events.length) {
+      return;
+    }
+
+    const changedTaskIds = new Set<string>();
+
+    for (const event of events) {
+      const existing = this.taskMap.get(event.task.id);
+      if (!existing) {
+        continue;
+      }
+
+      const drag = this.mapper.fromFrappeTask(event.task, event.start, event.end);
+      const updatedTask: Task = {
+        ...existing,
+        ...drag,
+      };
+
+      this.taskMap.set(updatedTask.id, updatedTask);
+      changedTaskIds.add(updatedTask.id);
+
+      if (persist) {
+        this.pendingChanges.set(updatedTask.id, this.toBatchPayload(updatedTask));
+      }
+    }
+
+    if (!changedTaskIds.size) {
+      return;
+    }
+
+    this.propagateSuccessorSchedules(changedTaskIds, persist);
+    if (refreshChart) {
+      this.refreshChartTasks();
+    }
+    this.syncSelectedTask();
+    this.cdr.detectChanges();
+  }
+
+  private propagateSuccessorSchedules(changedTaskIds: Set<string>, persist: boolean): void {
+    const successors = this.buildSuccessorMap();
+    const queue = Array.from(changedTaskIds);
+    const queued = new Set(queue);
+    const visitCounts = new Map<string, number>();
+    const maxVisitsPerTask = Math.max(1, this.taskMap.size);
+
+    while (queue.length) {
+      const currentId = queue.shift()!;
+      queued.delete(currentId);
+      const downstreamTasks = successors.get(currentId) ?? [];
+
+      for (const successor of downstreamTasks) {
+        if (changedTaskIds.has(successor.id)) {
+          continue;
+        }
+
+        const existing = this.taskMap.get(successor.id);
+        if (!existing) {
+          continue;
+        }
+
+        const propagated = this.calculatePropagatedTask(existing);
+        if (!propagated) {
+          continue;
+        }
+
+        this.taskMap.set(propagated.id, propagated);
+        if (persist) {
+          this.pendingChanges.set(propagated.id, this.toBatchPayload(propagated));
+        }
+
+        const nextVisitCount = (visitCounts.get(propagated.id) ?? 0) + 1;
+        visitCounts.set(propagated.id, nextVisitCount);
+
+        if (nextVisitCount < maxVisitsPerTask && !queued.has(propagated.id)) {
+          queue.push(propagated.id);
+          queued.add(propagated.id);
+        }
+      }
+    }
+  }
+
+  private buildSuccessorMap(): Map<string, Task[]> {
+    const successors = new Map<string, Task[]>();
+
+    for (const task of this.taskMap.values()) {
+      successors.set(task.id, []);
+    }
+
+    for (const task of this.taskMap.values()) {
+      for (const dependency of task.dependencies) {
+        successors.get(dependency.predecessorId)?.push(task);
+      }
+    }
+
+    return successors;
+  }
+
+  private calculatePropagatedTask(task: Task): Task | null {
+    const originalStart = this.parseTaskDate(task.startDate);
+    const originalEnd = this.parseTaskDate(task.endDate);
+    let minStart = originalStart;
+    let minEnd = originalEnd;
+
+    for (const dependency of task.dependencies) {
+      const predecessor = this.taskMap.get(dependency.predecessorId);
+      if (!predecessor) {
+        continue;
+      }
+
+      const predecessorStart = this.parseTaskDate(predecessor.startDate);
+      const predecessorEnd = this.parseTaskDate(predecessor.endDate);
+
+      if (dependency.type === 'FinishToStart') {
+        minStart = this.maxDate(minStart, this.addDays(predecessorEnd, 1));
+      }
+
+      if (dependency.type === 'StartToStart') {
+        minStart = this.maxDate(minStart, predecessorStart);
+      }
+
+      if (dependency.type === 'FinishToFinish') {
+        minEnd = this.maxDate(minEnd, predecessorEnd);
+      }
+    }
+
+    const durationDays = this.getInclusiveDurationDays(task.startDate, task.endDate);
+    if (this.sameDay(minStart, originalStart) && this.sameDay(minEnd, originalEnd)) {
+      return null;
+    }
+
+    let nextStart = minStart;
+    let nextEnd = this.addDays(nextStart, Math.max(durationDays - 1, 0));
+    if (nextEnd.getTime() < minEnd.getTime()) {
+      nextEnd = minEnd;
+      nextStart = this.addDays(nextEnd, -Math.max(durationDays - 1, 0));
+    }
+
+    return {
+      ...task,
+      startDate: nextStart.toISOString(),
+      endDate: nextEnd.toISOString(),
+    };
+  }
+
+  private toBatchPayload(task: Task): BatchTaskPayload {
+    return {
+      id: task.id,
+      title: task.title,
+      parentId: task.parentId,
+      order: task.order,
+      dependencies: task.dependencies,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      progress: task.progress,
+    };
+  }
+
+  private createTaskMap(tasks: Task[]): Map<string, Task> {
+    return new Map(tasks.map((task) => [task.id, this.cloneTask(task)]));
+  }
+
+  private cloneTaskMap(source: Map<string, Task>): Map<string, Task> {
+    return new Map(Array.from(source.entries()).map(([id, task]) => [id, this.cloneTask(task)]));
+  }
+
+  private cloneTask(task: Task): Task {
+    return {
+      ...task,
+      dependencies: task.dependencies.map((dependency) => ({ ...dependency })),
+    };
+  }
+
+  private syncSelectedTask(): void {
+    if (!this.selectedTask) {
+      return;
+    }
+
+    this.selectedTask = this.taskMap.get(this.selectedTask.id) ?? null;
+  }
+
+  private parseTaskDate(value: string): Date {
+    const date = new Date(value);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  private getInclusiveDurationDays(start: string, end: string): number {
+    const startDate = this.parseTaskDate(start);
+    const endDate = this.parseTaskDate(end);
+    return Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1);
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private maxDate(left: Date, right: Date): Date {
+    return left.getTime() >= right.getTime() ? left : right;
+  }
+
+  private sameDay(left: Date, right: Date): boolean {
+    return left.getTime() === right.getTime();
   }
 
   private getOrderedTasks(): Task[] {

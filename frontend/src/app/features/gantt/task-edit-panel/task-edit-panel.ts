@@ -19,6 +19,11 @@ import { DependencyType, Task, TaskDependencyItem, UpdateTask } from '../../../c
 import { TaskService } from '../../../core/services/taskService';
 import { DatePicker } from '../../../shared/components/date-picker/date-picker';
 
+export interface TaskEditSaveEvent {
+  id: string;
+  changes: UpdateTask;
+}
+
 @Component({
   selector: 'app-task-edit-panel',
   imports: [ReactiveFormsModule, CommonModule, DatePicker],
@@ -29,7 +34,7 @@ export class TaskEditPanel implements OnChanges {
   @Input() task: Task | null = null;
   @Input() allTasks: Task[] = [];
   @Output() closed = new EventEmitter<void>();
-  @Output() saved = new EventEmitter<Task>();
+  @Output() saved = new EventEmitter<TaskEditSaveEvent>();
   @Output() deleted = new EventEmitter<string>();
 
   private readonly fb = inject(FormBuilder);
@@ -98,7 +103,7 @@ export class TaskEditPanel implements OnChanges {
     const messages: string[] = [];
 
     if (errors['dateOrder']) {
-      messages.push('End date must be later than the start date.');
+      messages.push('End date cannot be earlier than the start date.');
     }
 
     const dependencyRules = errors['dependencyRules'] as string[] | undefined;
@@ -130,8 +135,9 @@ export class TaskEditPanel implements OnChanges {
       dependencies: this.getDependencies(),
     };
 
-    this.taskService.update(this.task.id, dto).subscribe((updated) => {
-      this.saved.emit(updated);
+    this.saved.emit({
+      id: this.task.id,
+      changes: dto,
     });
   }
 
@@ -185,8 +191,7 @@ export class TaskEditPanel implements OnChanges {
     }
 
     const errors: ValidationErrors = {};
-
-    if (startDate.getTime() >= endDate.getTime()) {
+    if (startDate.getTime() > endDate.getTime()) {
       errors['dateOrder'] = true;
     }
 
